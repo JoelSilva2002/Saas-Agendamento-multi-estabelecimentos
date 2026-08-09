@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { EstablishmentRepositoryPort } from '../../domain/establishment.repository.port';
-import { Establishment } from '../../domain/entities/establishment.entity';
+import { Establishment, EstablishmentAddress } from '../../domain/entities/establishment.entity';
 import {
   DuplicateEstablishmentSlugError,
   EstablishmentNotFoundError,
@@ -12,6 +12,8 @@ export interface UpdateEstablishmentInput {
   name?: string;
   slug?: string;
   timezone?: string;
+  address?: Partial<EstablishmentAddress>;
+  phones?: string[];
 }
 
 @Injectable()
@@ -35,7 +37,13 @@ export class UpdateEstablishmentUseCase {
       }
     }
 
-    const updated = existing.update({ name: input.name, slug: input.slug, timezone: input.timezone });
+    const updated = existing.update({
+      name: input.name,
+      slug: input.slug,
+      timezone: input.timezone,
+      address: input.address,
+      phones: input.phones,
+    });
     return this.establishmentRepository.update(updated);
   }
 }

@@ -22,6 +22,7 @@ model Tenant {
 
   establishments  Establishment[]
   membershipRoles UserTenantRole[]
+  coupons         Coupon[]
 
   @@map("tenants")
 }
@@ -36,12 +37,51 @@ model Establishment {
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
 
-  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  membershipRoles UserTenantRole[]
+  // Cadastro do estabelecimento (Fase 2): endereço e telefones de contato.
+  addressStreet       String?  @map("address_street")
+  addressNumber       String?  @map("address_number")
+  addressComplement   String?  @map("address_complement")
+  addressNeighborhood String?  @map("address_neighborhood")
+  addressCity         String?  @map("address_city")
+  addressState        String?  @map("address_state")
+  addressZipCode      String?  @map("address_zip_code")
+  addressCountry      String   @default("BR") @map("address_country")
+  phones              String[]
+
+  tenant                 Tenant                       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  membershipRoles        UserTenantRole[]
+  serviceCategories      ServiceCategory[]
+  services               Service[]
+  employees              Employee[]
+  businessHours          EstablishmentBusinessHours[]
+  availabilityExceptions AvailabilityException[]
+  agendaBlocks           AgendaBlock[]
+  appointments           Appointment[]
+  payments               Payment[]
+  waitlistEntries        WaitlistEntry[]
+  reviews                Review[]
+  coupons                Coupon[]
+  clientProfiles         ClientProfile[]
 
   @@unique([tenantId, slug])
   @@index([tenantId])
   @@map("establishments")
+}
+
+model EstablishmentBusinessHours {
+  id              String    @id @default(uuid())
+  establishmentId String    @map("establishment_id")
+  weekday         Int
+  isClosed        Boolean   @default(false) @map("is_closed")
+  openTime        DateTime? @map("open_time") @db.Time
+  closeTime       DateTime? @map("close_time") @db.Time
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  establishment Establishment @relation(fields: [establishmentId], references: [id], onDelete: Cascade)
+
+  @@unique([establishmentId, weekday])
+  @@map("establishment_business_hours")
 }
 
 model User {
@@ -57,6 +97,18 @@ model User {
 
   tenantRoles   UserTenantRole[]
   refreshTokens RefreshToken[]
+
+  // Scheduling domain relations. A single user can be staff at one establishment and a
+  // client at another (or both) — see ADR note above Employee/ClientProfile.
+  employeeProfiles      Employee[]
+  clientProfiles        ClientProfile[]
+  appointmentsAsClient  Appointment[]      @relation("AppointmentsAsClient")
+  appointmentsCancelled Appointment[]      @relation("AppointmentsCancelledBy")
+  appointmentsCreated   Appointment[]      @relation("AppointmentsCreatedBy")
+  agendaBlocksCreated   AgendaBlock[]      @relation("AgendaBlocksCreated")
+  waitlistEntries       WaitlistEntry[]
+  reviews               Review[]
+  couponRedemptions     CouponRedemption[]
 
   @@map("users")
 }
@@ -132,4 +184,409 @@ model RefreshToken {
 
   @@index([userId])
   @@map("refresh_tokens")
+}
+
+// ---------------------------------------------------------------------------
+// Scheduling domain (services, staff schedules, appointments, payments, etc.)
+// Every table here carries establishment_id (directly or via a required FK
+// that itself carries establishment_id) — see the tenant-isolation note at
+// the bottom of this file for how that boundary is enforced end-to-end.
+// ---------------------------------------------------------------------------
+
+enum ServiceStatus {
+  active
+  inactive
+}
+
+model ServiceCategory {
+  id              String   @id @default(uuid())
+  establishmentId String   @map("establishment_id")
+  name            String
+  displayOrder    Int      @default(0) @map("display_order")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  establishment Establishment @relation(fields: [establishmentId], references: [id], onDelete: Cascade)
+  services      Service[]
+
+  @@unique([establishmentId, name])
+  @@index([establishmentId])
+  @@map("service_categories")
+}
+
+model Service {
+  id                  String        @id @default(uuid())
+  establishmentId     String        @map("establishment_id")
+  categoryId          String?       @map("category_id")
+  name                String
+  description         String?
+  priceCents          Int           @map("price_cents")
+  durationMinutes     Int           @map("duration_minutes")
+  bufferBeforeMinutes Int           @default(0) @map("buffer_before_minutes")
+  bufferAfterMinutes  Int           @default(0) @map("buffer_after_minutes")
+  status              ServiceStatus @default(active)
+  createdAt           DateTime      @default(now()) @map("created_at")
+  updatedAt           DateTime      @updatedAt @map("updated_at")
+
+  establishment     Establishment     @relation(fields: [establishmentId], references: [id], onDelete: Cascade)
+  category          ServiceCategory?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  eligibleEmployees ServiceEmployee[]
+  appointments      Appointment[]
+  waitlistEntries   WaitlistEntry[]
+
+  @@index([establishmentId, status])
+  @@map("services")
+}
+
+enum EmployeeStatus {
+  active
+  inactive
+}
+
+// A staff "professional profile" for a User within one Establishment — separate from
+// UserTenantRole (which grants RBAC permissions) because not every employee necessarily
+// needs system permissions, and this table carries scheduling-specific data (job title,
+// working hours, breaks, time off) that has nothing to do with authorization.
+model Employee {
+  id              String         @id @default(uuid())
+  establishmentId String         @map("establishment_id")
+  userId          String         @map("user_id")
+  jobTitle        String         @map("job_title")
+  status          EmployeeStatus @default(active)
+  hiredAt         DateTime?      @map("hired_at") @db.Date
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  establishment          Establishment           @relation(fields: [establishmentId], references: [id], onDelete: Cascade)
+  user                   User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scheduleSlots          EmployeeScheduleSlot[]
+  timeOffs               EmployeeTimeOff[]
+  eligibleServices       ServiceEmployee[]
+  appointments           Appointment[]
+  agendaBlocks           AgendaBlock[]
+  reviews                Review[]
+  waitlistEntries        WaitlistEntry[]
+  availabilityExceptions AvailabilityException[]
+
+  @@unique([establishmentId, userId])
+  @@index([establishmentId])
+  @@map("employees")
+}
+
+model ServiceEmployee {
+  serviceId  String @map("service_id")
+  employeeId String @map("employee_id")
+
+  service  Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@id([serviceId, employeeId])
+  @@map("service_employees")
+}
+
+enum ScheduleSlotType {
+  working
+  break
+}
+
+// Unifies "jornada de trabalho" and "horário de almoço" into one table distinguished by
+// slotType — a break is just a slot subtracted from the working window on the same weekday.
+// weekday: 0=Sunday .. 6=Saturday (matches Postgres EXTRACT(DOW FROM date)).
+model EmployeeScheduleSlot {
+  id         String           @id @default(uuid())
+  employeeId String           @map("employee_id")
+  weekday    Int
+  slotType   ScheduleSlotType @map("slot_type")
+  startTime  DateTime         @map("start_time") @db.Time
+  endTime    DateTime         @map("end_time") @db.Time
+  createdAt  DateTime         @default(now()) @map("created_at")
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId, weekday])
+  @@map("employee_schedule_slots")
+}
+
+enum TimeOffType {
+  vacation
+  sick_leave
+  day_off
+  other
+}
+
+// Recurring/planned personal absence (férias, atestado, folga), as opposed to AgendaBlock
+// which is a one-off ad-hoc block (e.g. equipment maintenance, unexpected unavailability).
+model EmployeeTimeOff {
+  id         String      @id @default(uuid())
+  employeeId String      @map("employee_id")
+  type       TimeOffType
+  startAt    DateTime    @map("start_at")
+  endAt      DateTime    @map("end_at")
+  notes      String?
+  createdAt  DateTime    @default(now()) @map("created_at")
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId, startAt, endAt])
+  @@map("employee_time_off")
+}
+
+// Per-date overrides to the recurring weekly schedule: holidays, special hours, or a single
+// employee's exception day. employeeId = NULL applies to the whole establishment.
+model AvailabilityException {
+  id              String    @id @default(uuid())
+  establishmentId String    @map("establishment_id")
+  employeeId      String?   @map("employee_id")
+  date            DateTime  @map("date") @db.Date
+  isClosed        Boolean   @default(true) @map("is_closed")
+  startTime       DateTime? @map("start_time") @db.Time
+  endTime         DateTime? @map("end_time") @db.Time
+  reason          String?
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  establishment Establishment @relation(fields: [establishmentId], references: [id], onDelete: Cascade)
+  employee      Employee?     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([establishmentId, date])
+  @@map("availability_exceptions")
+}
+
+// Ad-hoc manual block on the agenda (e.g. "reunião", "manutenção"), independent of the
+// recurring weekly schedule and of planned time off. employeeId = NULL blocks a shared
+// establishment-level resource/slot rather than one specific professional.
+model AgendaBlock {
+  id              String   @id @default(uuid())
+  establishmentId String   @map("establishment_id")
+  employeeId      String?  @map("employee_id")
+  startAt         DateTime @map("start_at")
+  endAt           DateTime @map("end_at")
+  reason          String?
+  createdById     String   @map("created_by_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  establishment Establishment @relation(fields: [establishmentId], references: [id], onDelete: Cascade)
+  employee      Employee?     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  createdBy     User          @relation("AgendaBlocksCreated", fields: [createdById], references: [id])
+
+  @@index([establishmentId, employeeId, startAt])
+  @@map("agenda_blocks")
+}
+
+enum AppointmentStatus {
+  pending
+  confirmed
+  in_progress
+  completed
+  cancelled
+  no_show
+}
+
+model Appointment {
+  id                 String            @id @default(uuid())
+  establishmentId    String            @map("establishment_id")
+  clientId           String            @map("client_id")
+  employeeId         String            @map("employee_id")
+  serviceId          String            @map("service_id")
+  startAt            DateTime          @map("start_at")
+  endAt              DateTime          @map("end_at")
+  status             AppointmentStatus @default(pending)
+  // Snapshot of Service.priceCents at booking time — service prices can change later
+  // without silently altering the value of an already-booked appointment.
+  priceCents         Int               @map("price_cents")
+  // "Encaixe": deliberately booked outside normal availability / overlapping another
+  // appointment. Bypasses the anti-overlap exclusion constraint (see migration SQL).
+  isFitIn            Boolean           @default(false) @map("is_fit_in")
+  cancellationReason String?           @map("cancellation_reason")
+  cancelledAt        DateTime?         @map("cancelled_at")
+  cancelledById      String?           @map("cancelled_by_id")
+  createdById        String            @map("created_by_id")
+  createdAt          DateTime          @default(now()) @map("created_at")
+  updatedAt          DateTime          @updatedAt @map("updated_at")
+
+  establishment    Establishment     @relation(fields: [establishmentId], references: [id], onDelete: Cascade)
+  client           User              @relation("AppointmentsAsClient", fields: [clientId], references: [id])
+  employee         Employee          @relation(fields: [employeeId], references: [id])
+  service          Service           @relation(fields: [serviceId], references: [id])
+  cancelledBy      User?             @relation("AppointmentsCancelledBy", fields: [cancelledById], references: [id])
+  createdBy        User              @relation("AppointmentsCreatedBy", fields: [createdById], references: [id])
+  payments         Payment[]
+  review           Review?
+  couponRedemption CouponRedemption?
+
+  // Composite index tuned for slot search: "is employee X free between T1 and T2 at
+  // establishment E" is the hottest query in the whole system (availability engine).
+  @@index([establishmentId, employeeId, startAt])
+  @@index([establishmentId, startAt])
+  @@index([clientId, startAt])
+  @@map("appointments")
+}
+
+enum PaymentMethod {
+  pix
+  card
+  cash
+}
+
+enum PaymentType {
+  deposit
+  full
+  local
+}
+
+enum PaymentStatus {
+  pending
+  paid
+  failed
+  refunded
+  cancelled
+}
+
+model Payment {
+  id                String        @id @default(uuid())
+  establishmentId   String        @map("establishment_id")
+  appointmentId     String        @map("appointment_id")
+  method            PaymentMethod
+  paymentType       PaymentType   @map("payment_type")
+  status            PaymentStatus @default(pending)
+  amountCents       Int           @map("amount_cents")
+  externalReference String?       @map("external_reference")
+  paidAt            DateTime?     @map("paid_at")
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  establishment Establishment @relation(fields: [establishmentId], references: [id], onDelete: Cascade)
+  appointment   Appointment   @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@index([appointmentId])
+  @@index([establishmentId, status])
+  @@map("payments")
+}
+
+enum WaitlistPeriod {
+  morning
+  afternoon
+  evening
+  any
+}
+
+enum WaitlistStatus {
+  waiting
+  notified
+  converted
+  expired
+  cancelled
+}
+
+model WaitlistEntry {
+  id              String         @id @default(uuid())
+  establishmentId String         @map("establishment_id")
+  clientId        String         @map("client_id")
+  serviceId       String         @map("service_id")
+  employeeId      String?        @map("employee_id")
+  desiredDate     DateTime       @map("desired_date") @db.Date
+  desiredPeriod   WaitlistPeriod @default(any) @map("desired_period")
+  status          WaitlistStatus @default(waiting)
+  createdAt       DateTime       @default(now()) @map("created_at")
+
+  establishment Establishment @relation(fields: [establishmentId], references: [id], onDelete: Cascade)
+  client        User          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  service       Service       @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  employee      Employee?     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([establishmentId, serviceId, status])
+  @@index([desiredDate])
+  @@map("waitlist_entries")
+}
+
+model Review {
+  id              String   @id @default(uuid())
+  establishmentId String   @map("establishment_id")
+  appointmentId   String   @unique @map("appointment_id")
+  clientId        String   @map("client_id")
+  employeeId      String?  @map("employee_id")
+  rating          Int
+  comment         String?
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  establishment Establishment @relation(fields: [establishmentId], references: [id], onDelete: Cascade)
+  appointment   Appointment   @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  client        User          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  employee      Employee?     @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+
+  @@index([establishmentId, employeeId])
+  @@index([establishmentId, rating])
+  @@map("reviews")
+}
+
+enum CouponDiscountType {
+  percentage
+  fixed_amount
+}
+
+enum CouponStatus {
+  active
+  inactive
+  expired
+}
+
+model Coupon {
+  id               String             @id @default(uuid())
+  tenantId         String             @map("tenant_id")
+  // NULL = valid across every establishment in the tenant.
+  establishmentId  String?            @map("establishment_id")
+  code             String
+  discountType     CouponDiscountType @map("discount_type")
+  discountValue    Decimal            @map("discount_value") @db.Decimal(10, 2)
+  maxUses          Int?               @map("max_uses")
+  usedCount        Int                @default(0) @map("used_count")
+  minPurchaseCents Int?               @map("min_purchase_cents")
+  validFrom        DateTime           @map("valid_from")
+  validUntil       DateTime           @map("valid_until")
+  status           CouponStatus       @default(active)
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
+
+  tenant        Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  establishment Establishment?     @relation(fields: [establishmentId], references: [id], onDelete: Cascade)
+  redemptions   CouponRedemption[]
+
+  @@unique([tenantId, code])
+  @@index([establishmentId])
+  @@map("coupons")
+}
+
+model CouponRedemption {
+  id                   String   @id @default(uuid())
+  couponId             String   @map("coupon_id")
+  appointmentId        String   @unique @map("appointment_id")
+  clientId             String   @map("client_id")
+  discountAppliedCents Int      @map("discount_applied_cents")
+  redeemedAt           DateTime @default(now()) @map("redeemed_at")
+
+  coupon      Coupon      @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  client      User        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([couponId])
+  @@map("coupon_redemptions")
+}
+
+// CRM-facing data for a User acting as a client of one establishment (phone, birth date,
+// notes) — kept off the global User table since it's meaningless for staff-only users and
+// can legitimately differ per establishment for the same person.
+model ClientProfile {
+  id              String    @id @default(uuid())
+  establishmentId String    @map("establishment_id")
+  userId          String    @map("user_id")
+  phone           String?
+  birthDate       DateTime? @map("birth_date") @db.Date
+  notes           String?
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  establishment Establishment @relation(fields: [establishmentId], references: [id], onDelete: Cascade)
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([establishmentId, userId])
+  @@map("client_profiles")
 }

@@ -36,7 +36,21 @@ export class PrismaEstablishmentRepository implements EstablishmentRepositoryPor
     const props = EstablishmentMapper.toPersistence(establishment);
     const updated = await this.prisma.establishment.update({
       where: { id: establishment.id },
-      data: { name: props.name, slug: props.slug, timezone: props.timezone, updatedAt: props.updatedAt },
+      data: {
+        name: props.name,
+        slug: props.slug,
+        timezone: props.timezone,
+        addressStreet: props.addressStreet,
+        addressNumber: props.addressNumber,
+        addressComplement: props.addressComplement,
+        addressNeighborhood: props.addressNeighborhood,
+        addressCity: props.addressCity,
+        addressState: props.addressState,
+        addressZipCode: props.addressZipCode,
+        addressCountry: props.addressCountry,
+        phones: props.phones,
+        updatedAt: props.updatedAt,
+      },
     });
     return EstablishmentMapper.toDomain(updated);
   }

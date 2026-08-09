@@ -8,6 +8,9 @@ import { TenantsModule } from './modules/tenants/tenants.module';
 import { EstablishmentsModule } from './modules/establishments/establishments.module';
 import { UsersModule } from './modules/users/users.module';
 import { RbacModule } from './modules/rbac/rbac.module';
+import { ClientsModule } from './modules/clients/clients.module';
+import { EmployeesModule } from './modules/employees/employees.module';
+import { ServicesModule } from './modules/services/services.module';
 
 @Module({
   imports: [
@@ -22,6 +25,9 @@ import { RbacModule } from './modules/rbac/rbac.module';
     EstablishmentsModule,
     UsersModule,
     RbacModule,
+    ClientsModule,
+    EmployeesModule,
+    ServicesModule,
   ],
 })
 export class AppModule {}

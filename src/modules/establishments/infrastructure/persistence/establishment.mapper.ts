@@ -1,4 +1,4 @@
-import { Establishment as PrismaEstablishment } from '@prisma/client';
+import { Establishment as PrismaEstablishment, Prisma } from '@prisma/client';
 import { Establishment } from '../../domain/entities/establishment.entity';
 
 export class EstablishmentMapper {
@@ -9,13 +9,43 @@ export class EstablishmentMapper {
       name: record.name,
       slug: record.slug,
       timezone: record.timezone,
+      address: {
+        street: record.addressStreet,
+        number: record.addressNumber,
+        complement: record.addressComplement,
+        neighborhood: record.addressNeighborhood,
+        city: record.addressCity,
+        state: record.addressState,
+        zipCode: record.addressZipCode,
+        country: record.addressCountry,
+      },
+      phones: record.phones,
       deletedAt: record.deletedAt,
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
     });
   }
 
-  static toPersistence(establishment: Establishment) {
-    return establishment.toPersistenceProps();
+  static toPersistence(establishment: Establishment): Prisma.EstablishmentUncheckedCreateInput {
+    const props = establishment.toPersistenceProps();
+    return {
+      id: props.id,
+      tenantId: props.tenantId,
+      name: props.name,
+      slug: props.slug,
+      timezone: props.timezone,
+      addressStreet: props.address.street,
+      addressNumber: props.address.number,
+      addressComplement: props.address.complement,
+      addressNeighborhood: props.address.neighborhood,
+      addressCity: props.address.city,
+      addressState: props.address.state,
+      addressZipCode: props.address.zipCode,
+      addressCountry: props.address.country,
+      phones: props.phones,
+      deletedAt: props.deletedAt,
+      createdAt: props.createdAt,
+      updatedAt: props.updatedAt,
+    };
   }
 }

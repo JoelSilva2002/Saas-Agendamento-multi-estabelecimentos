@@ -4,11 +4,13 @@ import { RefreshSessionUseCase } from '../application/use-cases/refresh-session.
 import { LogoutUseCase } from '../application/use-cases/logout.use-case';
 import { LoginRequestDto } from './dto/login.request.dto';
 import { RefreshRequestDto } from './dto/refresh.request.dto';
+import { RegisterClientRequestDto } from './dto/register-client.request.dto';
 import { Public } from './decorators/public.decorator';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../domain/request-context.types';
 import { MembershipRepositoryPort } from '../../rbac/domain/membership.repository.port';
+import { RegisterClientUseCase } from '../../clients/application/use-cases/register-client.use-case';
 
 @Controller('auth')
 export class AuthController {
@@ -17,6 +19,7 @@ export class AuthController {
     private readonly refreshSessionUseCase: RefreshSessionUseCase,
     private readonly logoutUseCase: LogoutUseCase,
     private readonly membershipRepository: MembershipRepositoryPort,
+    private readonly registerClientUseCase: RegisterClientUseCase,
   ) {}
 
   @Public()
@@ -38,6 +41,36 @@ export class AuthController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async logout(@Body() dto: RefreshRequestDto) {
     await this.logoutUseCase.execute(dto);
+  }
+
+  @Public()
+  @Post('register')
+  @HttpCode(HttpStatus.CREATED)
+  async register(@Body() dto: RegisterClientRequestDto) {
+    const result = await this.registerClientUseCase.execute({
+      tenantId: dto.tenantId,
+      establishmentId: dto.establishmentId,
+      email: dto.email,
+      password: dto.password,
+      firstName: dto.firstName,
+      lastName: dto.lastName,
+      phone: dto.phone,
+      birthDate: dto.birthDate ? new Date(dto.birthDate) : undefined,
+    });
+    return {
+      user: {
+        id: result.user.id,
+        email: result.user.email,
+        firstName: result.user.firstName,
+        lastName: result.user.lastName,
+      },
+      clientProfile: {
+        id: result.clientProfile.id,
+        establishmentId: result.clientProfile.establishmentId,
+        phone: result.clientProfile.phone,
+        birthDate: result.clientProfile.birthDate,
+      },
+    };
   }
 
   @UseGuards(JwtAuthGuard)

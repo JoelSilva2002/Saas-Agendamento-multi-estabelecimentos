@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import { Injectable } from '@nestjs/common';
 import { EstablishmentRepositoryPort } from '../../domain/establishment.repository.port';
-import { Establishment } from '../../domain/entities/establishment.entity';
+import { Establishment, EstablishmentAddress } from '../../domain/entities/establishment.entity';
 import { DuplicateEstablishmentSlugError } from '../../domain/errors/establishment-errors';
 
 export interface CreateEstablishmentInput {
@@ -9,6 +9,8 @@ export interface CreateEstablishmentInput {
   name: string;
   slug: string;
   timezone?: string;
+  address?: Partial<EstablishmentAddress>;
+  phones?: string[];
 }
 
 @Injectable()
@@ -27,6 +29,8 @@ export class CreateEstablishmentUseCase {
       name: input.name,
       slug: input.slug,
       timezone: input.timezone,
+      address: input.address,
+      phones: input.phones,
     });
 
     return this.establishmentRepository.create(establishment);

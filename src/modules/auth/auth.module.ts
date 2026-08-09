@@ -5,6 +5,7 @@ import { PassportModule } from '@nestjs/passport';
 import { UsersModule } from '../users/users.module';
 import { RbacModule } from '../rbac/rbac.module';
 import { EstablishmentsModule } from '../establishments/establishments.module';
+import { ClientsModule } from '../clients/clients.module';
 import { PasswordHasherPort } from './application/ports/password-hasher.port';
 import { TokenServicePort } from './application/ports/token-service.port';
 import { RefreshTokenRepositoryPort } from './domain/refresh-token.repository.port';
@@ -33,6 +34,7 @@ import { AppConfig } from '../../config/configuration';
     UsersModule,
     RbacModule,
     EstablishmentsModule,
+    ClientsModule,
     PassportModule,
     JwtModule.registerAsync({
       inject: [ConfigService],
