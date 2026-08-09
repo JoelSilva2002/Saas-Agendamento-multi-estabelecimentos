@@ -1,0 +1,19 @@
+import { Module } from '@nestjs/common';
+import { EmployeesModule } from '../employees/employees.module';
+import { ServicesModule } from '../services/services.module';
+import { AppointmentRepositoryPort } from './domain/appointment.repository.port';
+import { PrismaAppointmentRepository } from './infrastructure/persistence/prisma-appointment.repository';
+import { GetAvailableSlotsUseCase } from './application/use-cases/get-available-slots.use-case';
+import { CreateAppointmentUseCase } from './application/use-cases/create-appointment.use-case';
+import { AppointmentsController } from './presentation/appointments.controller';
+
+@Module({
+  imports: [EmployeesModule, ServicesModule],
+  controllers: [AppointmentsController],
+  providers: [
+    { provide: AppointmentRepositoryPort, useClass: PrismaAppointmentRepository },
+    GetAvailableSlotsUseCase,
+    CreateAppointmentUseCase,
+  ],
+})
+export class AppointmentsModule {}

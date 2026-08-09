@@ -30,6 +30,6 @@ import { EstablishmentsController } from './presentation/establishments.controll
     SetBusinessHoursUseCase,
     GetBusinessHoursUseCase,
   ],
-  exports: [EstablishmentRepositoryPort],
+  exports: [EstablishmentRepositoryPort, BusinessHoursRepositoryPort],
 })
 export class EstablishmentsModule {}

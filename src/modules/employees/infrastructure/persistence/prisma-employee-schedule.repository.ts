@@ -1,16 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../../shared-kernel/infrastructure/prisma.service';
+import { dateToTimeString, timeStringToDate } from '../../../../shared-kernel/infrastructure/time-of-day.util';
 import { EmployeeScheduleSlot } from '../../domain/entities/employee-schedule-slot.entity';
 import { EmployeeScheduleRepositoryPort } from '../../domain/employee-schedule.repository.port';
 
-const TIME_BASE_DATE = '1970-01-01';
-
-function timeStringToDate(time: string): Date {
-  return new Date(`${TIME_BASE_DATE}T${time}:00.000Z`);
+// Schedule slots always have a non-null startTime/endTime (unlike business hours, which
+// allows nulls for closed days) — these thin wrappers keep that non-null guarantee typed.
+function requiredTimeStringToDate(time: string): Date {
+  return timeStringToDate(time) as Date;
 }
 
-function dateToTimeString(date: Date): string {
-  return date.toISOString().slice(11, 16);
+function requiredDateToTimeString(date: Date): string {
+  return dateToTimeString(date) as string;
 }
 
 @Injectable()
@@ -26,8 +27,8 @@ export class PrismaEmployeeScheduleRepository implements EmployeeScheduleReposit
       EmployeeScheduleSlot.fromPersistence({
         weekday: record.weekday,
         slotType: record.slotType,
-        startTime: dateToTimeString(record.startTime),
-        endTime: dateToTimeString(record.endTime),
+        startTime: requiredDateToTimeString(record.startTime),
+        endTime: requiredDateToTimeString(record.endTime),
       }),
     );
   }
@@ -40,8 +41,8 @@ export class PrismaEmployeeScheduleRepository implements EmployeeScheduleReposit
           employeeId,
           weekday: slot.weekday,
           slotType: slot.slotType,
-          startTime: timeStringToDate(slot.startTime),
-          endTime: timeStringToDate(slot.endTime),
+          startTime: requiredTimeStringToDate(slot.startTime),
+          endTime: requiredTimeStringToDate(slot.endTime),
         })),
       }),
     ]);

@@ -34,5 +34,6 @@ import { ServiceCategoriesController } from './presentation/service-categories.c
     DeactivateServiceUseCase,
     SetServiceEmployeesUseCase,
   ],
+  exports: [ServiceRepositoryPort],
 })
 export class ServicesModule {}

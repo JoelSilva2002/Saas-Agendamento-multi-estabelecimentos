@@ -36,6 +36,6 @@ import { EmployeesController } from './presentation/employees.controller';
     ListEmployeeTimeOffUseCase,
     RemoveEmployeeTimeOffUseCase,
   ],
-  exports: [EmployeeRepositoryPort],
+  exports: [EmployeeRepositoryPort, EmployeeScheduleRepositoryPort, EmployeeTimeOffRepositoryPort],
 })
 export class EmployeesModule {}
