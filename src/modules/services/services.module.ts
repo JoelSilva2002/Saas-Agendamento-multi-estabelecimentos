@@ -14,6 +14,7 @@ import { ListServicesUseCase } from './application/use-cases/list-services.use-c
 import { UpdateServiceUseCase } from './application/use-cases/update-service.use-case';
 import { DeactivateServiceUseCase } from './application/use-cases/deactivate-service.use-case';
 import { SetServiceEmployeesUseCase } from './application/use-cases/set-service-employees.use-case';
+import { ListEligibleEmployeesUseCase } from './application/use-cases/list-eligible-employees.use-case';
 import { ServicesController } from './presentation/services.controller';
 import { ServiceCategoriesController } from './presentation/service-categories.controller';
 
@@ -33,6 +34,7 @@ import { ServiceCategoriesController } from './presentation/service-categories.c
     UpdateServiceUseCase,
     DeactivateServiceUseCase,
     SetServiceEmployeesUseCase,
+    ListEligibleEmployeesUseCase,
   ],
   exports: [ServiceRepositoryPort],
 })

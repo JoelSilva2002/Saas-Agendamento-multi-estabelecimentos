@@ -11,6 +11,9 @@ export interface CreateEstablishmentInput {
   timezone?: string;
   address?: Partial<EstablishmentAddress>;
   phones?: string[];
+  cancellationMinHoursNotice?: number;
+  noShowFeeEnabled?: boolean;
+  noShowFeePercentage?: number;
 }
 
 @Injectable()
@@ -31,6 +34,9 @@ export class CreateEstablishmentUseCase {
       timezone: input.timezone,
       address: input.address,
       phones: input.phones,
+      cancellationMinHoursNotice: input.cancellationMinHoursNotice,
+      noShowFeeEnabled: input.noShowFeeEnabled,
+      noShowFeePercentage: input.noShowFeePercentage,
     });
 
     return this.establishmentRepository.create(establishment);

@@ -16,4 +16,9 @@ export class GetAvailableSlotsRequestDto {
   @IsInt()
   @Min(5)
   slotIntervalMinutes?: number;
+
+  /** Reschedule flow: excludes this appointment's own current occupancy from the listing. */
+  @IsOptional()
+  @IsUUID()
+  excludeAppointmentId?: string;
 }

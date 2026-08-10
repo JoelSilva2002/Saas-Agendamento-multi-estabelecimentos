@@ -1,6 +1,13 @@
 import { ValidationError } from '../../../../shared-kernel/domain/domain-error';
+import {
+  CancellationReasonRequiredError,
+  InvalidAppointmentStatusTransitionError,
+} from '../errors/appointment-errors';
 
-export type AppointmentStatus = 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled' | 'no_show';
+export type AppointmentStatus =
+  'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled' | 'no_show';
+
+const TERMINAL_STATUSES: AppointmentStatus[] = ['cancelled', 'completed', 'no_show'];
 
 export interface AppointmentProps {
   id: string;
@@ -16,6 +23,7 @@ export interface AppointmentProps {
   cancellationReason: string | null;
   cancelledAt: Date | null;
   cancelledById: string | null;
+  noShowFeeCents: number | null;
   createdById: string;
   createdAt: Date;
   updatedAt: Date;
@@ -60,6 +68,7 @@ export class Appointment {
       cancellationReason: null,
       cancelledAt: null,
       cancelledById: null,
+      noShowFeeCents: null,
       createdById: props.createdById,
       createdAt: now,
       updatedAt: now,
@@ -108,6 +117,78 @@ export class Appointment {
 
   get isFitIn(): boolean {
     return this.props.isFitIn;
+  }
+
+  get cancellationReason(): string | null {
+    return this.props.cancellationReason;
+  }
+
+  get cancelledAt(): Date | null {
+    return this.props.cancelledAt;
+  }
+
+  get cancelledById(): string | null {
+    return this.props.cancelledById;
+  }
+
+  get noShowFeeCents(): number | null {
+    return this.props.noShowFeeCents;
+  }
+
+  get createdById(): string {
+    return this.props.createdById;
+  }
+
+  /** Cancels the appointment. Enforces the entity's own invariants only (reason present,
+   * not already in a terminal status) — ownership and the minimum-notice window are
+   * business rules that depend on the caller's role/time, so they're checked one layer up
+   * in CancelAppointmentUseCase. */
+  cancel(reason: string, cancelledById: string): Appointment {
+    this.assertNotTerminal();
+    if (!reason || reason.trim().length === 0) {
+      throw new CancellationReasonRequiredError();
+    }
+
+    return new Appointment({
+      ...this.props,
+      status: 'cancelled',
+      cancellationReason: reason.trim(),
+      cancelledAt: new Date(),
+      cancelledById,
+      updatedAt: new Date(),
+    });
+  }
+
+  reschedule(newStartAt: Date, newEndAt: Date, employeeId?: string): Appointment {
+    this.assertNotTerminal();
+    if (newStartAt >= newEndAt) {
+      throw new ValidationError('Appointment requer startAt anterior a endAt');
+    }
+
+    return new Appointment({
+      ...this.props,
+      startAt: newStartAt,
+      endAt: newEndAt,
+      employeeId: employeeId ?? this.props.employeeId,
+      updatedAt: new Date(),
+    });
+  }
+
+  markNoShow(noShowFeeCents: number | null): Appointment {
+    this.assertNotTerminal();
+
+    return new Appointment({
+      ...this.props,
+      status: 'no_show',
+      noShowFeeCents,
+      updatedAt: new Date(),
+    });
+  }
+
+  private assertNotTerminal(): void {
+    if (TERMINAL_STATUSES.includes(this.props.status)) {
+      throw new InvalidAppointmentStatusTransitionError(this.props.status);
+    }
   }
 
   toPersistenceProps(): AppointmentProps {

@@ -17,6 +17,7 @@ export class AppointmentMapper {
       cancellationReason: record.cancellationReason,
       cancelledAt: record.cancelledAt,
       cancelledById: record.cancelledById,
+      noShowFeeCents: record.noShowFeeCents,
       createdById: record.createdById,
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,

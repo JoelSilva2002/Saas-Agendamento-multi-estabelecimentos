@@ -14,6 +14,9 @@ export interface UpdateEstablishmentInput {
   timezone?: string;
   address?: Partial<EstablishmentAddress>;
   phones?: string[];
+  cancellationMinHoursNotice?: number;
+  noShowFeeEnabled?: boolean;
+  noShowFeePercentage?: number;
 }
 
 @Injectable()
@@ -21,7 +24,10 @@ export class UpdateEstablishmentUseCase {
   constructor(private readonly establishmentRepository: EstablishmentRepositoryPort) {}
 
   async execute(input: UpdateEstablishmentInput): Promise<Establishment> {
-    const existing = await this.establishmentRepository.findById(input.establishmentId, input.tenantId);
+    const existing = await this.establishmentRepository.findById(
+      input.establishmentId,
+      input.tenantId,
+    );
     if (!existing || existing.deletedAt) {
       throw new EstablishmentNotFoundError(input.establishmentId);
     }
@@ -43,6 +49,9 @@ export class UpdateEstablishmentUseCase {
       timezone: input.timezone,
       address: input.address,
       phones: input.phones,
+      cancellationMinHoursNotice: input.cancellationMinHoursNotice,
+      noShowFeeEnabled: input.noShowFeeEnabled,
+      noShowFeePercentage: input.noShowFeePercentage,
     });
     return this.establishmentRepository.update(updated);
   }

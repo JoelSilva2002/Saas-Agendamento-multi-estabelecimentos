@@ -48,6 +48,12 @@ model Establishment {
   addressCountry      String   @default("BR") @map("address_country")
   phones              String[]
 
+  // Cancellation policy (Fase 4): minimum notice a client must give to self-cancel/reschedule,
+  // and an optional no-show penalty as a percentage of the service price.
+  cancellationMinHoursNotice Int     @default(24) @map("cancellation_min_hours_notice")
+  noShowFeeEnabled           Boolean @default(false) @map("no_show_fee_enabled")
+  noShowFeePercentage        Int?    @map("no_show_fee_percentage")
+
   tenant                 Tenant                       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   membershipRoles        UserTenantRole[]
   serviceCategories      ServiceCategory[]
@@ -399,6 +405,9 @@ model Appointment {
   cancellationReason String?           @map("cancellation_reason")
   cancelledAt        DateTime?         @map("cancelled_at")
   cancelledById      String?           @map("cancelled_by_id")
+  // Snapshot of the fee charged (percentage of priceCents, computed at markNoShow time) —
+  // null unless status is no_show and the establishment had noShowFeeEnabled at the time.
+  noShowFeeCents     Int?              @map("no_show_fee_cents")
   createdById        String            @map("created_by_id")
   createdAt          DateTime          @default(now()) @map("created_at")
   updatedAt          DateTime          @updatedAt @map("updated_at")

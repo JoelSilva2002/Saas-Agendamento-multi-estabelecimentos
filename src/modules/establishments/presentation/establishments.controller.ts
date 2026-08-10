@@ -1,4 +1,15 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Put } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  Put,
+} from '@nestjs/common';
 import { CreateEstablishmentUseCase } from '../application/use-cases/create-establishment.use-case';
 import { GetEstablishmentUseCase } from '../application/use-cases/get-establishment.use-case';
 import { ListEstablishmentsUseCase } from '../application/use-cases/list-establishments.use-case';
@@ -41,7 +52,10 @@ export class EstablishmentsController {
 
   @Get(':establishmentId')
   @Auth('establishment:read')
-  async getOne(@Param('tenantId') tenantId: string, @Param('establishmentId') establishmentId: string) {
+  async getOne(
+    @Param('tenantId') tenantId: string,
+    @Param('establishmentId') establishmentId: string,
+  ) {
     const establishment = await this.getEstablishment.execute({ tenantId, establishmentId });
     return this.toResponse(establishment);
   }
@@ -53,14 +67,21 @@ export class EstablishmentsController {
     @Param('establishmentId') establishmentId: string,
     @Body() dto: UpdateEstablishmentRequestDto,
   ) {
-    const establishment = await this.updateEstablishment.execute({ tenantId, establishmentId, ...dto });
+    const establishment = await this.updateEstablishment.execute({
+      tenantId,
+      establishmentId,
+      ...dto,
+    });
     return this.toResponse(establishment);
   }
 
   @Delete(':establishmentId')
   @Auth('establishment:delete')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(@Param('tenantId') tenantId: string, @Param('establishmentId') establishmentId: string) {
+  async remove(
+    @Param('tenantId') tenantId: string,
+    @Param('establishmentId') establishmentId: string,
+  ) {
     await this.deleteEstablishment.execute({ tenantId, establishmentId });
   }
 
@@ -91,6 +112,9 @@ export class EstablishmentsController {
       timezone: establishment.timezone,
       address: establishment.address,
       phones: establishment.phones,
+      cancellationMinHoursNotice: establishment.cancellationMinHoursNotice,
+      noShowFeeEnabled: establishment.noShowFeeEnabled,
+      noShowFeePercentage: establishment.noShowFeePercentage,
     };
   }
 

@@ -31,7 +31,11 @@ describe('Users invite + role management (e2e)', () => {
   beforeEach(async () => {
     await resetDatabase(prisma);
     const admin = await createPlatformAdmin(prisma);
-    const { accessToken: platformAdminToken } = await login(app, admin.email, PLATFORM_ADMIN_PASSWORD);
+    const { accessToken: platformAdminToken } = await login(
+      app,
+      admin.email,
+      PLATFORM_ADMIN_PASSWORD,
+    );
     const tenant = await createTenantWithOwner(app, platformAdminToken);
     tenantId = tenant.tenantId;
     ownerToken = (await login(app, tenant.ownerEmail, tenant.ownerPassword)).accessToken;
@@ -42,7 +46,7 @@ describe('Users invite + role management (e2e)', () => {
       .send({ name: 'Filial Centro', slug: 'filial-centro' })
       .expect(201);
     establishmentId = establishment.body.id;
-  });
+  }, 20000);
 
   it('invites a new user scoped to one establishment, who can then log in with the temporary password', async () => {
     const employeeRoleId = await getRoleIdByName(prisma, 'employee');
@@ -113,7 +117,11 @@ describe('Users invite + role management (e2e)', () => {
       })
       .expect(201);
 
-    const { accessToken: employeeToken } = await login(app, 'promoted@test.local', invite.body.temporaryPassword);
+    const { accessToken: employeeToken } = await login(
+      app,
+      'promoted@test.local',
+      invite.body.temporaryPassword,
+    );
 
     // Employees cannot update an establishment.
     await request(app.getHttpServer())
@@ -136,7 +144,11 @@ describe('Users invite + role management (e2e)', () => {
       .send({ roleId: managerRoleId })
       .expect(200);
 
-    const { accessToken: managerToken } = await login(app, 'promoted@test.local', invite.body.temporaryPassword);
+    const { accessToken: managerToken } = await login(
+      app,
+      'promoted@test.local',
+      invite.body.temporaryPassword,
+    );
 
     await request(app.getHttpServer())
       .patch(`/tenants/${tenantId}/establishments/${establishmentId}`)

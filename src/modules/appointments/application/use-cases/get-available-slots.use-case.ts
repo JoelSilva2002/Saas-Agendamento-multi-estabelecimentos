@@ -8,7 +8,11 @@ import { EmployeeTimeOffRepositoryPort } from '../../../employees/domain/employe
 import { BusinessHoursRepositoryPort } from '../../../establishments/domain/business-hours.repository.port';
 import { AppointmentRepositoryPort } from '../../domain/appointment.repository.port';
 import { EmployeeNotEligibleForServiceError } from '../../domain/errors/appointment-errors';
-import { AvailabilityCalculator, AvailableSlot, TimeRange } from '../../domain/services/availability-calculator.service';
+import {
+  AvailabilityCalculator,
+  AvailableSlot,
+  TimeRange,
+} from '../../domain/services/availability-calculator.service';
 
 const DEFAULT_SLOT_INTERVAL_MINUTES = 15;
 
@@ -21,6 +25,9 @@ export interface GetAvailableSlotsInput {
   slotIntervalMinutes?: number;
   /** Defaults to the real current time; only affects results when `date` is today. */
   now?: Date;
+  /** When listing slots for a reschedule flow, excludes that appointment's own current
+   * occupancy so its current slot shows up as available (it's about to be vacated). */
+  excludeAppointmentId?: string;
 }
 
 @Injectable()
@@ -40,12 +47,17 @@ export class GetAvailableSlotsUseCase {
       throw new ServiceNotFoundError(input.serviceId);
     }
 
-    const employee = await this.employeeRepository.findById(input.employeeId, input.establishmentId);
+    const employee = await this.employeeRepository.findById(
+      input.employeeId,
+      input.establishmentId,
+    );
     if (!employee || employee.status !== 'active') {
       throw new EmployeeNotFoundError(input.employeeId);
     }
 
-    const eligibleEmployeeIds = await this.serviceRepository.findEligibleEmployeeIds(input.serviceId);
+    const eligibleEmployeeIds = await this.serviceRepository.findEligibleEmployeeIds(
+      input.serviceId,
+    );
     if (!eligibleEmployeeIds.includes(input.employeeId)) {
       throw new EmployeeNotEligibleForServiceError(input.employeeId, input.serviceId);
     }
@@ -56,7 +68,11 @@ export class GetAvailableSlotsUseCase {
       this.businessHoursRepository.findAllByEstablishment(input.establishmentId),
       this.scheduleRepository.findAllByEmployee(input.employeeId),
       this.timeOffRepository.findAllByEmployee(input.employeeId),
-      this.appointmentRepository.findBusyRangesForEmployeeOnDate(input.employeeId, input.date),
+      this.appointmentRepository.findBusyRangesForEmployeeOnDate(
+        input.employeeId,
+        input.date,
+        input.excludeAppointmentId,
+      ),
     ]);
 
     const businessHoursDay = businessHoursDays.find((day) => day.weekday === weekday);
@@ -76,7 +92,11 @@ export class GetAvailableSlotsUseCase {
     return AvailabilityCalculator.computeAvailableSlots({
       date: input.date,
       businessHours: businessHoursDay
-        ? { isClosed: businessHoursDay.isClosed, openTime: businessHoursDay.openTime, closeTime: businessHoursDay.closeTime }
+        ? {
+            isClosed: businessHoursDay.isClosed,
+            openTime: businessHoursDay.openTime,
+            closeTime: businessHoursDay.closeTime,
+          }
         : { isClosed: true, openTime: null, closeTime: null },
       workingSlots: daySlots.filter((slot) => slot.slotType === 'working'),
       breakSlots: daySlots.filter((slot) => slot.slotType === 'break'),

@@ -26,6 +26,7 @@ const PERMISSIONS: Array<{ key: string; description: string }> = [
   { key: 'appointment:create:own', description: 'Criar o próprio agendamento (cliente)' },
   { key: 'appointment:read:own', description: 'Visualizar os próprios agendamentos (cliente)' },
   { key: 'appointment:cancel:own', description: 'Cancelar o próprio agendamento (cliente)' },
+  { key: 'appointment:reschedule:own', description: 'Reagendar o próprio agendamento (cliente)' },
   { key: 'agenda:block', description: 'Criar bloqueios manuais na agenda' },
   { key: 'payment:manage', description: 'Registrar e conciliar pagamentos' },
   { key: 'payment:read', description: 'Visualizar pagamentos do estabelecimento' },
@@ -107,11 +108,17 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'appointment:update',
   ],
   // Cliente: só enxerga/opera sobre os próprios dados — nunca dados de outros clientes.
+  // establishment:read/employee:read aqui são leitura ampla do catálogo (não há dado
+  // sensível nessas entidades) para sustentar o fluxo de navegação "escolhe estabelecimento
+  // -> escolhe profissional" antes de reservar.
   client: [
+    'establishment:read',
     'service:read',
+    'employee:read',
     'appointment:create:own',
     'appointment:read:own',
     'appointment:cancel:own',
+    'appointment:reschedule:own',
     'waitlist:create:own',
     'review:create:own',
   ],

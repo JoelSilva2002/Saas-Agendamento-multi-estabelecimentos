@@ -20,7 +20,9 @@ export class PrismaEstablishmentRepository implements EstablishmentRepositoryPor
   }
 
   async existsInTenant(id: string, tenantId: string): Promise<boolean> {
-    const count = await this.prisma.establishment.count({ where: { id, tenantId, deletedAt: null } });
+    const count = await this.prisma.establishment.count({
+      where: { id, tenantId, deletedAt: null },
+    });
     return count > 0;
   }
 
@@ -49,6 +51,9 @@ export class PrismaEstablishmentRepository implements EstablishmentRepositoryPor
         addressZipCode: props.addressZipCode,
         addressCountry: props.addressCountry,
         phones: props.phones,
+        cancellationMinHoursNotice: props.cancellationMinHoursNotice,
+        noShowFeeEnabled: props.noShowFeeEnabled,
+        noShowFeePercentage: props.noShowFeePercentage,
         updatedAt: props.updatedAt,
       },
     });

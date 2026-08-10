@@ -1,5 +1,15 @@
 import { Type } from 'class-transformer';
-import { IsArray, IsOptional, IsString, MinLength, ValidateNested } from 'class-validator';
+import {
+  IsArray,
+  IsBoolean,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+  MinLength,
+  ValidateNested,
+} from 'class-validator';
 import { EstablishmentAddressDto } from './establishment-address.dto';
 
 export class UpdateEstablishmentRequestDto {
@@ -26,4 +36,19 @@ export class UpdateEstablishmentRequestDto {
   @IsArray()
   @IsString({ each: true })
   phones?: string[];
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  cancellationMinHoursNotice?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  noShowFeeEnabled?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  noShowFeePercentage?: number;
 }

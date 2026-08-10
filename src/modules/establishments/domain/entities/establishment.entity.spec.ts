@@ -37,4 +37,94 @@ describe('Establishment', () => {
     expect(updated.slug).toBe('filial-centro');
     expect(establishment.name).toBe('Filial Centro');
   });
+
+  describe('cancellation policy', () => {
+    it('defaults to 24h notice and no no-show fee', () => {
+      const establishment = Establishment.create({
+        id: '1',
+        tenantId: 'tenant-1',
+        name: 'Filial',
+        slug: 'filial',
+      });
+      expect(establishment.cancellationMinHoursNotice).toBe(24);
+      expect(establishment.noShowFeeEnabled).toBe(false);
+      expect(establishment.noShowFeePercentage).toBeNull();
+    });
+
+    it('accepts a valid no-show fee configuration', () => {
+      const establishment = Establishment.create({
+        id: '1',
+        tenantId: 'tenant-1',
+        name: 'Filial',
+        slug: 'filial',
+        cancellationMinHoursNotice: 12,
+        noShowFeeEnabled: true,
+        noShowFeePercentage: 50,
+      });
+      expect(establishment.cancellationMinHoursNotice).toBe(12);
+      expect(establishment.noShowFeePercentage).toBe(50);
+    });
+
+    it('rejects enabling the no-show fee without a percentage', () => {
+      expect(() =>
+        Establishment.create({
+          id: '1',
+          tenantId: 'tenant-1',
+          name: 'Filial',
+          slug: 'filial',
+          noShowFeeEnabled: true,
+        }),
+      ).toThrow(ValidationError);
+    });
+
+    it('rejects a percentage outside 1-100', () => {
+      expect(() =>
+        Establishment.create({
+          id: '1',
+          tenantId: 'tenant-1',
+          name: 'Filial',
+          slug: 'filial',
+          noShowFeeEnabled: true,
+          noShowFeePercentage: 0,
+        }),
+      ).toThrow(ValidationError);
+      expect(() =>
+        Establishment.create({
+          id: '1',
+          tenantId: 'tenant-1',
+          name: 'Filial',
+          slug: 'filial',
+          noShowFeeEnabled: true,
+          noShowFeePercentage: 101,
+        }),
+      ).toThrow(ValidationError);
+    });
+
+    it('rejects a percentage set while the fee is disabled', () => {
+      expect(() =>
+        Establishment.create({
+          id: '1',
+          tenantId: 'tenant-1',
+          name: 'Filial',
+          slug: 'filial',
+          noShowFeeEnabled: false,
+          noShowFeePercentage: 50,
+        }),
+      ).toThrow(ValidationError);
+    });
+
+    it('update() disabling the fee auto-clears the percentage even if not explicitly nulled', () => {
+      const establishment = Establishment.create({
+        id: '1',
+        tenantId: 'tenant-1',
+        name: 'Filial',
+        slug: 'filial',
+        noShowFeeEnabled: true,
+        noShowFeePercentage: 30,
+      });
+      const updated = establishment.update({ noShowFeeEnabled: false });
+      expect(updated.noShowFeeEnabled).toBe(false);
+      expect(updated.noShowFeePercentage).toBeNull();
+    });
+  });
 });

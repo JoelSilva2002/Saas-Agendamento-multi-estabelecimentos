@@ -1,7 +1,15 @@
-import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Logger } from '@nestjs/common';
+import {
+  ArgumentsHost,
+  Catch,
+  ExceptionFilter,
+  HttpException,
+  HttpStatus,
+  Logger,
+} from '@nestjs/common';
 import { Response } from 'express';
 import {
   ConflictError,
+  ForbiddenError,
   NotFoundError,
   UnauthorizedError,
   ValidationError,
@@ -31,7 +39,9 @@ export class HttpExceptionFilter implements ExceptionFilter {
     if (exception instanceof HttpException) {
       const response = exception.getResponse();
       const message =
-        typeof response === 'string' ? response : (response as { message?: string }).message ?? exception.message;
+        typeof response === 'string'
+          ? response
+          : ((response as { message?: string }).message ?? exception.message);
       return { status: exception.getStatus(), message: message as string };
     }
 
@@ -49,6 +59,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     if (exception instanceof UnauthorizedError) {
       return { status: HttpStatus.UNAUTHORIZED, message: exception.message };
+    }
+
+    if (exception instanceof ForbiddenError) {
+      return { status: HttpStatus.FORBIDDEN, message: exception.message };
     }
 
     return { status: HttpStatus.INTERNAL_SERVER_ERROR, message: 'Internal server error' };

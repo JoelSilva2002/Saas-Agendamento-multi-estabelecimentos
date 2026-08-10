@@ -7,18 +7,35 @@ import {
   AppointmentRepositoryPort,
   BusyRangeDto,
   CreateAppointmentIfAvailableParams,
+  ListAppointmentsFilters,
+  RescheduleAppointmentIfAvailableParams,
 } from '../../domain/appointment.repository.port';
 import { SlotNotAvailableError } from '../../domain/errors/appointment-errors';
-import { AvailabilityCalculator, AvailabilityContext } from '../../domain/services/availability-calculator.service';
+import {
+  AvailabilityCalculator,
+  AvailabilityContext,
+} from '../../domain/services/availability-calculator.service';
 import { AppointmentMapper } from './appointment.mapper';
 
-const ACTIVE_STATUS_FILTER: Prisma.AppointmentWhereInput['status'] = { notIn: ['cancelled', 'no_show'] };
+const ACTIVE_STATUS_FILTER: Prisma.AppointmentWhereInput['status'] = {
+  notIn: ['cancelled', 'no_show'],
+};
 // Name of the GiST EXCLUDE constraint from the scheduling_domain_constraints migration —
-// the last-resort backstop if a conflicting insert ever slips past the advisory lock below.
+// the last-resort backstop if a conflicting insert/update ever slips past the advisory lock.
 const NO_OVERLAP_CONSTRAINT_NAME = 'appointments_no_overlap_per_employee';
 
 function dayRange(date: string): { dayStart: Date; dayEnd: Date } {
   return { dayStart: new Date(`${date}T00:00:00.000Z`), dayEnd: new Date(`${date}T23:59:59.999Z`) };
+}
+
+interface RevalidationParams {
+  establishmentId: string;
+  employeeId: string;
+  date: string;
+  startAt: Date;
+  endAt: Date;
+  bufferBeforeMinutes: number;
+  bufferAfterMinutes: number;
 }
 
 /**
@@ -34,10 +51,20 @@ function dayRange(date: string): { dayStart: Date; dayEnd: Date } {
 export class PrismaAppointmentRepository implements AppointmentRepositoryPort {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findBusyRangesForEmployeeOnDate(employeeId: string, date: string): Promise<BusyRangeDto[]> {
+  async findBusyRangesForEmployeeOnDate(
+    employeeId: string,
+    date: string,
+    excludeAppointmentId?: string,
+  ): Promise<BusyRangeDto[]> {
     const { dayStart, dayEnd } = dayRange(date);
     const records = await this.prisma.appointment.findMany({
-      where: { employeeId, status: ACTIVE_STATUS_FILTER, startAt: { lt: dayEnd }, endAt: { gt: dayStart } },
+      where: {
+        employeeId,
+        status: ACTIVE_STATUS_FILTER,
+        startAt: { lt: dayEnd },
+        endAt: { gt: dayStart },
+        ...(excludeAppointmentId ? { id: { not: excludeAppointmentId } } : {}),
+      },
       include: { service: { select: { bufferBeforeMinutes: true, bufferAfterMinutes: true } } },
     });
 
@@ -52,6 +79,48 @@ export class PrismaAppointmentRepository implements AppointmentRepositoryPort {
   async findById(id: string, establishmentId: string): Promise<Appointment | null> {
     const found = await this.prisma.appointment.findFirst({ where: { id, establishmentId } });
     return found ? AppointmentMapper.toDomain(found) : null;
+  }
+
+  async findMany(
+    establishmentId: string,
+    filters: ListAppointmentsFilters,
+  ): Promise<Appointment[]> {
+    const records = await this.prisma.appointment.findMany({
+      where: {
+        establishmentId,
+        clientId: filters.clientId,
+        employeeId: filters.employeeId,
+        status: filters.status,
+        ...(filters.fromDate || filters.toDate
+          ? {
+              startAt: {
+                ...(filters.fromDate ? { gte: filters.fromDate } : {}),
+                ...(filters.toDate ? { lte: filters.toDate } : {}),
+              },
+            }
+          : {}),
+      },
+      orderBy: { startAt: 'desc' },
+    });
+    return records.map(AppointmentMapper.toDomain);
+  }
+
+  async update(appointment: Appointment): Promise<Appointment> {
+    const props = appointment.toPersistenceProps();
+    const updated = await this.prisma.appointment.update({
+      where: { id: props.id },
+      data: {
+        status: props.status,
+        cancellationReason: props.cancellationReason,
+        cancelledAt: props.cancelledAt,
+        cancelledById: props.cancelledById,
+        noShowFeeCents: props.noShowFeeCents,
+        startAt: props.startAt,
+        endAt: props.endAt,
+        employeeId: props.employeeId,
+      },
+    });
+    return AppointmentMapper.toDomain(updated);
   }
 
   async createIfAvailable(params: CreateAppointmentIfAvailableParams): Promise<Appointment> {
@@ -88,34 +157,72 @@ export class PrismaAppointmentRepository implements AppointmentRepositoryPort {
 
       return AppointmentMapper.toDomain(created);
     } catch (error) {
-      if (error instanceof SlotNotAvailableError) {
-        throw error;
-      }
-      // Defensive backstop only — should be unreachable in practice since the advisory
-      // lock already serializes writers, but the EXCLUDE constraint is the true source of
-      // truth if this code path is ever bypassed (e.g. a future direct-SQL migration).
-      if (error instanceof Error && error.message.includes(NO_OVERLAP_CONSTRAINT_NAME)) {
-        throw new SlotNotAvailableError();
-      }
-      throw error;
+      throw this.translateConflict(error);
     }
+  }
+
+  async rescheduleIfAvailable(
+    params: RescheduleAppointmentIfAvailableParams,
+  ): Promise<Appointment> {
+    try {
+      const updated = await this.prisma.$transaction(async (tx) => {
+        const lockKey = `${params.employeeId}:${params.date}`;
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`;
+
+        const stillAvailable = await this.isStillAvailable(tx, params, params.appointmentId);
+        if (!stillAvailable) {
+          throw new SlotNotAvailableError();
+        }
+
+        return tx.appointment.update({
+          where: { id: params.appointmentId },
+          data: { employeeId: params.employeeId, startAt: params.startAt, endAt: params.endAt },
+        });
+      });
+
+      return AppointmentMapper.toDomain(updated);
+    } catch (error) {
+      throw this.translateConflict(error);
+    }
+  }
+
+  private translateConflict(error: unknown): unknown {
+    if (error instanceof SlotNotAvailableError) {
+      return error;
+    }
+    // Defensive backstop only — should be unreachable in practice since the advisory
+    // lock already serializes writers, but the EXCLUDE constraint is the true source of
+    // truth if this code path is ever bypassed (e.g. a future direct-SQL migration).
+    if (error instanceof Error && error.message.includes(NO_OVERLAP_CONSTRAINT_NAME)) {
+      return new SlotNotAvailableError();
+    }
+    return error;
   }
 
   private async isStillAvailable(
     tx: Prisma.TransactionClient,
-    params: CreateAppointmentIfAvailableParams,
+    params: RevalidationParams,
+    excludeAppointmentId?: string,
   ): Promise<boolean> {
     const weekday = new Date(`${params.date}T00:00:00.000Z`).getUTCDay();
     const { dayStart, dayEnd } = dayRange(params.date);
 
     const [businessHours, scheduleSlots, timeOffEntries, busyAppointments] = await Promise.all([
-      tx.establishmentBusinessHours.findFirst({ where: { establishmentId: params.establishmentId, weekday } }),
+      tx.establishmentBusinessHours.findFirst({
+        where: { establishmentId: params.establishmentId, weekday },
+      }),
       tx.employeeScheduleSlot.findMany({ where: { employeeId: params.employeeId, weekday } }),
       tx.employeeTimeOff.findMany({
         where: { employeeId: params.employeeId, startAt: { lt: dayEnd }, endAt: { gt: dayStart } },
       }),
       tx.appointment.findMany({
-        where: { employeeId: params.employeeId, status: ACTIVE_STATUS_FILTER, startAt: { lt: dayEnd }, endAt: { gt: dayStart } },
+        where: {
+          employeeId: params.employeeId,
+          status: ACTIVE_STATUS_FILTER,
+          startAt: { lt: dayEnd },
+          endAt: { gt: dayStart },
+          ...(excludeAppointmentId ? { id: { not: excludeAppointmentId } } : {}),
+        },
         include: { service: { select: { bufferBeforeMinutes: true, bufferAfterMinutes: true } } },
       }),
     ]);
@@ -131,14 +238,24 @@ export class PrismaAppointmentRepository implements AppointmentRepositoryPort {
         : { isClosed: true, openTime: null, closeTime: null },
       workingSlots: scheduleSlots
         .filter((slot) => slot.slotType === 'working')
-        .map((slot) => ({ startTime: dateToTimeString(slot.startTime) as string, endTime: dateToTimeString(slot.endTime) as string })),
+        .map((slot) => ({
+          startTime: dateToTimeString(slot.startTime) as string,
+          endTime: dateToTimeString(slot.endTime) as string,
+        })),
       breakSlots: scheduleSlots
         .filter((slot) => slot.slotType === 'break')
-        .map((slot) => ({ startTime: dateToTimeString(slot.startTime) as string, endTime: dateToTimeString(slot.endTime) as string })),
+        .map((slot) => ({
+          startTime: dateToTimeString(slot.startTime) as string,
+          endTime: dateToTimeString(slot.endTime) as string,
+        })),
       timeOffRanges: timeOffEntries.map((entry) => ({ start: entry.startAt, end: entry.endAt })),
       busyRanges: busyAppointments.map((appointment) => ({
-        start: new Date(appointment.startAt.getTime() - appointment.service.bufferBeforeMinutes * 60_000),
-        end: new Date(appointment.endAt.getTime() + appointment.service.bufferAfterMinutes * 60_000),
+        start: new Date(
+          appointment.startAt.getTime() - appointment.service.bufferBeforeMinutes * 60_000,
+        ),
+        end: new Date(
+          appointment.endAt.getTime() + appointment.service.bufferAfterMinutes * 60_000,
+        ),
       })),
       // durationMinutes/slotIntervalMinutes are unused by isRangeAvailable (it works off the
       // explicit candidateStart/candidateEnd instead) — present only to satisfy the shared
