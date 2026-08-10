@@ -35,6 +35,7 @@ const PERMISSIONS: Array<{ key: string; description: string }> = [
   { key: 'review:read', description: 'Visualizar avaliações do estabelecimento' },
   { key: 'review:create:own', description: 'Avaliar o próprio atendimento (cliente)' },
   { key: 'coupon:manage', description: 'Criar e gerenciar cupons de desconto' },
+  { key: 'dashboard:read', description: 'Visualizar o resumo diário do estabelecimento' },
 ];
 
 const ROLE_PERMISSIONS: Record<string, string[]> = {
@@ -60,6 +61,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'waitlist:manage',
     'review:read',
     'coupon:manage',
+    'dashboard:read',
   ],
   manager: [
     'establishment:read',
@@ -81,6 +83,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'waitlist:manage',
     'review:read',
     'coupon:manage',
+    'dashboard:read',
   ],
   // Recepção: opera a agenda e recebe pagamentos, mas não configura serviços/funcionários.
   receptionist: [
@@ -96,6 +99,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'payment:read',
     'waitlist:manage',
     'review:read',
+    'dashboard:read',
   ],
   // Funcionário: enxerga a própria agenda e o catálogo, gerencia a própria jornada/folgas.
   employee: [

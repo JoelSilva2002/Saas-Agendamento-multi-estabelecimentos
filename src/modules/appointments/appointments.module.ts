@@ -25,5 +25,6 @@ import { AppointmentsController } from './presentation/appointments.controller';
     GetAppointmentUseCase,
     ListAppointmentsUseCase,
   ],
+  exports: [AppointmentRepositoryPort],
 })
 export class AppointmentsModule {}

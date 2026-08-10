@@ -14,6 +14,8 @@ export interface CreateEstablishmentInput {
   cancellationMinHoursNotice?: number;
   noShowFeeEnabled?: boolean;
   noShowFeePercentage?: number;
+  depositEnabled?: boolean;
+  depositPercentage?: number;
 }
 
 @Injectable()
@@ -37,6 +39,8 @@ export class CreateEstablishmentUseCase {
       cancellationMinHoursNotice: input.cancellationMinHoursNotice,
       noShowFeeEnabled: input.noShowFeeEnabled,
       noShowFeePercentage: input.noShowFeePercentage,
+      depositEnabled: input.depositEnabled,
+      depositPercentage: input.depositPercentage,
     });
 
     return this.establishmentRepository.create(establishment);

@@ -12,6 +12,11 @@ export abstract class EstablishmentRepositoryPort {
 
   abstract findAllByTenant(tenantId: string): Promise<Establishment[]>;
 
+  /** Every non-deleted establishment across every tenant — used by the reminders cron
+   * (notifications module) to scan all establishments' upcoming appointments. Nothing else
+   * in the system needs a cross-tenant listing; keep this method scoped to that one use. */
+  abstract findAllActive(): Promise<Establishment[]>;
+
   abstract update(establishment: Establishment): Promise<Establishment>;
 
   abstract softDelete(id: string, tenantId: string): Promise<void>;

@@ -34,6 +34,11 @@ export class PrismaEstablishmentRepository implements EstablishmentRepositoryPor
     return records.map(EstablishmentMapper.toDomain);
   }
 
+  async findAllActive(): Promise<Establishment[]> {
+    const records = await this.prisma.establishment.findMany({ where: { deletedAt: null } });
+    return records.map(EstablishmentMapper.toDomain);
+  }
+
   async update(establishment: Establishment): Promise<Establishment> {
     const props = EstablishmentMapper.toPersistence(establishment);
     const updated = await this.prisma.establishment.update({
@@ -54,6 +59,8 @@ export class PrismaEstablishmentRepository implements EstablishmentRepositoryPor
         cancellationMinHoursNotice: props.cancellationMinHoursNotice,
         noShowFeeEnabled: props.noShowFeeEnabled,
         noShowFeePercentage: props.noShowFeePercentage,
+        depositEnabled: props.depositEnabled,
+        depositPercentage: props.depositPercentage,
         updatedAt: props.updatedAt,
       },
     });

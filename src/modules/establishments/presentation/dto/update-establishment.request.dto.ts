@@ -51,4 +51,14 @@ export class UpdateEstablishmentRequestDto {
   @Min(1)
   @Max(100)
   noShowFeePercentage?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  depositEnabled?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  depositPercentage?: number;
 }

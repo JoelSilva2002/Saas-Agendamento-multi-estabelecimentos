@@ -1,3 +1,4 @@
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { CancelAppointmentUseCase } from './cancel-appointment.use-case';
 import { AppointmentRepositoryPort } from '../../domain/appointment.repository.port';
 import { EstablishmentRepositoryPort } from '../../../establishments/domain/establishment.repository.port';
@@ -9,6 +10,7 @@ import {
   CancellationReasonRequiredError,
   CancellationWindowExpiredError,
 } from '../../domain/errors/appointment-errors';
+import { APPOINTMENT_CANCELLED_EVENT } from '../../domain/events/appointment-events';
 
 describe('CancelAppointmentUseCase', () => {
   const NOW = new Date('2026-03-10T00:00:00.000Z');
@@ -54,10 +56,17 @@ describe('CancelAppointmentUseCase', () => {
       ...overrides?.establishmentRepository,
     } as unknown as EstablishmentRepositoryPort;
 
+    const eventEmitter = { emitAsync: jest.fn().mockResolvedValue([]) } as unknown as EventEmitter2;
+
     return {
-      useCase: new CancelAppointmentUseCase(appointmentRepository, establishmentRepository),
+      useCase: new CancelAppointmentUseCase(
+        appointmentRepository,
+        establishmentRepository,
+        eventEmitter,
+      ),
       appointmentRepository,
       establishmentRepository,
+      eventEmitter,
     };
   }
 
@@ -85,6 +94,16 @@ describe('CancelAppointmentUseCase', () => {
     expect(result.status).toBe('cancelled');
     expect(result.cancellationReason).toBe('Imprevisto');
     expect(appointmentRepository.update).toHaveBeenCalled();
+  });
+
+  it('emits appointment.cancelled with the cancellation data', async () => {
+    const { useCase, eventEmitter } = build();
+    await useCase.execute(baseInput);
+
+    expect(eventEmitter.emitAsync).toHaveBeenCalledWith(
+      APPOINTMENT_CANCELLED_EVENT,
+      expect.objectContaining({ appointmentId: 'appointment-1', cancellationReason: 'Imprevisto' }),
+    );
   });
 
   it('throws AppointmentNotFoundError when the appointment does not exist', async () => {

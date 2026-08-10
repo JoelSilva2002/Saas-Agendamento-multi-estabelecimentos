@@ -115,6 +115,8 @@ export class EstablishmentsController {
       cancellationMinHoursNotice: establishment.cancellationMinHoursNotice,
       noShowFeeEnabled: establishment.noShowFeeEnabled,
       noShowFeePercentage: establishment.noShowFeePercentage,
+      depositEnabled: establishment.depositEnabled,
+      depositPercentage: establishment.depositPercentage,
     };
   }
 

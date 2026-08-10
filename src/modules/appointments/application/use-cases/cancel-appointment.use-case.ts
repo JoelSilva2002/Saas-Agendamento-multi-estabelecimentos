@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { AppointmentRepositoryPort } from '../../domain/appointment.repository.port';
 import { Appointment } from '../../domain/entities/appointment.entity';
 import {
@@ -8,6 +9,10 @@ import {
 } from '../../domain/errors/appointment-errors';
 import { EstablishmentRepositoryPort } from '../../../establishments/domain/establishment.repository.port';
 import { EstablishmentNotFoundError } from '../../../establishments/domain/errors/establishment-errors';
+import {
+  APPOINTMENT_CANCELLED_EVENT,
+  AppointmentCancelledEvent,
+} from '../../domain/events/appointment-events';
 
 export interface CancelAppointmentInput {
   tenantId: string;
@@ -25,6 +30,7 @@ export class CancelAppointmentUseCase {
   constructor(
     private readonly appointmentRepository: AppointmentRepositoryPort,
     private readonly establishmentRepository: EstablishmentRepositoryPort,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async execute(input: CancelAppointmentInput): Promise<Appointment> {
@@ -44,7 +50,19 @@ export class CancelAppointmentUseCase {
     }
 
     const cancelled = appointment.cancel(input.reason, input.actingUserId);
-    return this.appointmentRepository.update(cancelled);
+    const saved = await this.appointmentRepository.update(cancelled);
+
+    const event: AppointmentCancelledEvent = {
+      appointmentId: saved.id,
+      establishmentId: saved.establishmentId,
+      clientId: saved.clientId,
+      startAt: saved.startAt,
+      cancellationReason: saved.cancellationReason as string,
+      cancelledById: saved.cancelledById as string,
+    };
+    await this.eventEmitter.emitAsync(APPOINTMENT_CANCELLED_EVENT, event);
+
+    return saved;
   }
 
   private async assertWithinCancellationWindow(

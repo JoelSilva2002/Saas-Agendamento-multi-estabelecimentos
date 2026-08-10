@@ -12,10 +12,19 @@ export class PrismaClientProfileRepository implements ClientProfileRepositoryPor
     return ClientProfile.fromPersistence(created);
   }
 
-  async findByUserAndEstablishment(userId: string, establishmentId: string): Promise<ClientProfile | null> {
+  async findByUserAndEstablishment(
+    userId: string,
+    establishmentId: string,
+  ): Promise<ClientProfile | null> {
     const found = await this.prisma.clientProfile.findUnique({
       where: { establishmentId_userId: { establishmentId, userId } },
     });
     return found ? ClientProfile.fromPersistence(found) : null;
+  }
+
+  async countCreatedBetween(establishmentId: string, from: Date, to: Date): Promise<number> {
+    return this.prisma.clientProfile.count({
+      where: { establishmentId, createdAt: { gte: from, lt: to } },
+    });
   }
 }

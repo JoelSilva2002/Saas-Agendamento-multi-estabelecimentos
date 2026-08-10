@@ -26,6 +26,10 @@ export interface EstablishmentProps {
   /** Percentage (1-100) of the service price charged when a client no-shows. Must be null
    * when noShowFeeEnabled is false, and a value in [1,100] when true. */
   noShowFeePercentage: number | null;
+  depositEnabled: boolean;
+  /** Percentage (1-100) of the service price charged upfront when a "deposit" payment is
+   * created. Same null-iff-disabled invariant as noShowFeePercentage. */
+  depositPercentage: number | null;
   deletedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -42,6 +46,8 @@ export interface CreateEstablishmentProps {
   cancellationMinHoursNotice?: number;
   noShowFeeEnabled?: boolean;
   noShowFeePercentage?: number | null;
+  depositEnabled?: boolean;
+  depositPercentage?: number | null;
 }
 
 export class Establishment {
@@ -61,10 +67,23 @@ export class Establishment {
     const cancellationMinHoursNotice = props.cancellationMinHoursNotice ?? 24;
     const noShowFeeEnabled = props.noShowFeeEnabled ?? false;
     const noShowFeePercentage = props.noShowFeePercentage ?? null;
-    Establishment.assertValidCancellationPolicy(
-      cancellationMinHoursNotice,
+    if (!Number.isInteger(cancellationMinHoursNotice) || cancellationMinHoursNotice < 0) {
+      throw new ValidationError('cancellationMinHoursNotice deve ser um inteiro não negativo');
+    }
+    Establishment.assertValidPercentagePolicy(
       noShowFeeEnabled,
       noShowFeePercentage,
+      'noShowFeePercentage',
+      'a multa por no-show',
+    );
+
+    const depositEnabled = props.depositEnabled ?? false;
+    const depositPercentage = props.depositPercentage ?? null;
+    Establishment.assertValidPercentagePolicy(
+      depositEnabled,
+      depositPercentage,
+      'depositPercentage',
+      'o sinal/depósito',
     );
 
     const now = new Date();
@@ -88,34 +107,36 @@ export class Establishment {
       cancellationMinHoursNotice,
       noShowFeeEnabled,
       noShowFeePercentage,
+      depositEnabled,
+      depositPercentage,
       deletedAt: null,
       createdAt: now,
       updatedAt: now,
     });
   }
 
-  private static assertValidCancellationPolicy(
-    cancellationMinHoursNotice: number,
-    noShowFeeEnabled: boolean,
-    noShowFeePercentage: number | null,
+  /** Shared invariant for both noShowFeePercentage and depositPercentage: null iff the
+   * matching *Enabled flag is false, an integer in [1,100] iff it's true. */
+  private static assertValidPercentagePolicy(
+    enabled: boolean,
+    percentage: number | null,
+    fieldName: string,
+    featureLabel: string,
   ): void {
-    if (!Number.isInteger(cancellationMinHoursNotice) || cancellationMinHoursNotice < 0) {
-      throw new ValidationError('cancellationMinHoursNotice deve ser um inteiro não negativo');
-    }
-    if (noShowFeeEnabled) {
+    if (enabled) {
       if (
-        noShowFeePercentage === null ||
-        !Number.isInteger(noShowFeePercentage) ||
-        noShowFeePercentage < 1 ||
-        noShowFeePercentage > 100
+        percentage === null ||
+        !Number.isInteger(percentage) ||
+        percentage < 1 ||
+        percentage > 100
       ) {
         throw new ValidationError(
-          'noShowFeePercentage deve ser um inteiro entre 1 e 100 quando a multa está ativa',
+          `${fieldName} deve ser um inteiro entre 1 e 100 quando ${featureLabel} está ativa`,
         );
       }
-    } else if (noShowFeePercentage !== null) {
+    } else if (percentage !== null) {
       throw new ValidationError(
-        'noShowFeePercentage deve ser nulo quando a multa por no-show está desativada',
+        `${fieldName} deve ser nulo quando ${featureLabel} está desativada`,
       );
     }
   }
@@ -168,6 +189,14 @@ export class Establishment {
     return this.props.noShowFeePercentage;
   }
 
+  get depositEnabled(): boolean {
+    return this.props.depositEnabled;
+  }
+
+  get depositPercentage(): number | null {
+    return this.props.depositPercentage;
+  }
+
   update(changes: {
     name?: string;
     slug?: string;
@@ -177,6 +206,8 @@ export class Establishment {
     cancellationMinHoursNotice?: number;
     noShowFeeEnabled?: boolean;
     noShowFeePercentage?: number | null;
+    depositEnabled?: boolean;
+    depositPercentage?: number | null;
   }): Establishment {
     const name = changes.name?.trim() ?? this.props.name;
     const slug = changes.slug?.trim() ?? this.props.slug;
@@ -189,19 +220,38 @@ export class Establishment {
 
     const cancellationMinHoursNotice =
       changes.cancellationMinHoursNotice ?? this.props.cancellationMinHoursNotice;
+    if (!Number.isInteger(cancellationMinHoursNotice) || cancellationMinHoursNotice < 0) {
+      throw new ValidationError('cancellationMinHoursNotice deve ser um inteiro não negativo');
+    }
+
+    // Disabling a *Enabled flag always clears its percentage, even if the caller didn't
+    // explicitly null it — a bare `{ noShowFeeEnabled: false }` patch is the common "turn it
+    // off" call and shouldn't also require remembering to clear the percentage in the same
+    // request.
     const noShowFeeEnabled = changes.noShowFeeEnabled ?? this.props.noShowFeeEnabled;
-    // Disabling the fee always clears the percentage, even if the caller didn't explicitly
-    // null it — a bare `{ noShowFeeEnabled: false }` patch is the common "turn it off" call
-    // and shouldn't also require remembering to clear the percentage in the same request.
     const noShowFeePercentage = !noShowFeeEnabled
       ? null
       : changes.noShowFeePercentage !== undefined
         ? changes.noShowFeePercentage
         : this.props.noShowFeePercentage;
-    Establishment.assertValidCancellationPolicy(
-      cancellationMinHoursNotice,
+    Establishment.assertValidPercentagePolicy(
       noShowFeeEnabled,
       noShowFeePercentage,
+      'noShowFeePercentage',
+      'a multa por no-show',
+    );
+
+    const depositEnabled = changes.depositEnabled ?? this.props.depositEnabled;
+    const depositPercentage = !depositEnabled
+      ? null
+      : changes.depositPercentage !== undefined
+        ? changes.depositPercentage
+        : this.props.depositPercentage;
+    Establishment.assertValidPercentagePolicy(
+      depositEnabled,
+      depositPercentage,
+      'depositPercentage',
+      'o sinal/depósito',
     );
 
     return new Establishment({
@@ -214,6 +264,8 @@ export class Establishment {
       cancellationMinHoursNotice,
       noShowFeeEnabled,
       noShowFeePercentage,
+      depositEnabled,
+      depositPercentage,
       updatedAt: new Date(),
     });
   }

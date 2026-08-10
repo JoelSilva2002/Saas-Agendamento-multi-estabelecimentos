@@ -127,4 +127,68 @@ describe('Establishment', () => {
       expect(updated.noShowFeePercentage).toBeNull();
     });
   });
+
+  describe('deposit policy', () => {
+    it('defaults to disabled with no percentage', () => {
+      const establishment = Establishment.create({
+        id: '1',
+        tenantId: 'tenant-1',
+        name: 'Filial',
+        slug: 'filial',
+      });
+      expect(establishment.depositEnabled).toBe(false);
+      expect(establishment.depositPercentage).toBeNull();
+    });
+
+    it('accepts a valid deposit configuration', () => {
+      const establishment = Establishment.create({
+        id: '1',
+        tenantId: 'tenant-1',
+        name: 'Filial',
+        slug: 'filial',
+        depositEnabled: true,
+        depositPercentage: 30,
+      });
+      expect(establishment.depositPercentage).toBe(30);
+    });
+
+    it('rejects enabling the deposit without a percentage', () => {
+      expect(() =>
+        Establishment.create({
+          id: '1',
+          tenantId: 'tenant-1',
+          name: 'Filial',
+          slug: 'filial',
+          depositEnabled: true,
+        }),
+      ).toThrow(ValidationError);
+    });
+
+    it('rejects a percentage outside 1-100', () => {
+      expect(() =>
+        Establishment.create({
+          id: '1',
+          tenantId: 'tenant-1',
+          name: 'Filial',
+          slug: 'filial',
+          depositEnabled: true,
+          depositPercentage: 101,
+        }),
+      ).toThrow(ValidationError);
+    });
+
+    it('update() disabling the deposit auto-clears the percentage', () => {
+      const establishment = Establishment.create({
+        id: '1',
+        tenantId: 'tenant-1',
+        name: 'Filial',
+        slug: 'filial',
+        depositEnabled: true,
+        depositPercentage: 30,
+      });
+      const updated = establishment.update({ depositEnabled: false });
+      expect(updated.depositEnabled).toBe(false);
+      expect(updated.depositPercentage).toBeNull();
+    });
+  });
 });

@@ -17,6 +17,8 @@ export interface UpdateEstablishmentInput {
   cancellationMinHoursNotice?: number;
   noShowFeeEnabled?: boolean;
   noShowFeePercentage?: number;
+  depositEnabled?: boolean;
+  depositPercentage?: number;
 }
 
 @Injectable()
@@ -52,6 +54,8 @@ export class UpdateEstablishmentUseCase {
       cancellationMinHoursNotice: input.cancellationMinHoursNotice,
       noShowFeeEnabled: input.noShowFeeEnabled,
       noShowFeePercentage: input.noShowFeePercentage,
+      depositEnabled: input.depositEnabled,
+      depositPercentage: input.depositPercentage,
     });
     return this.establishmentRepository.update(updated);
   }

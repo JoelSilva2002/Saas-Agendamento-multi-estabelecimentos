@@ -1,4 +1,3 @@
-import { randomUUID } from 'crypto';
 import { INestApplication } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import request from 'supertest';
@@ -9,27 +8,9 @@ import {
   createTenantWithOwner,
   getRoleIdByName,
   login,
+  registerClient,
   PLATFORM_ADMIN_PASSWORD,
 } from '../test-utils/fixtures';
-
-/** Registers a client via the public self-registration endpoint and logs them in — used to
- * exercise the `:own`-permission side of the appointments API (as opposed to staff). */
-async function registerClient(
-  app: INestApplication,
-  tenantId: string,
-  establishmentId: string,
-  slug: string,
-): Promise<{ accessToken: string; userId: string }> {
-  const email = `${slug}-${randomUUID()}@test.local`;
-  const password = 'ClientPassword123!';
-  const response = await request(app.getHttpServer())
-    .post('/auth/register')
-    .send({ tenantId, establishmentId, email, password, firstName: 'Cliente', lastName: 'Teste' })
-    .expect(201);
-
-  const { accessToken } = await login(app, email, password);
-  return { accessToken, userId: response.body.user.id };
-}
 
 const ALL_WEEKDAYS = [0, 1, 2, 3, 4, 5, 6];
 // Always far enough in the future to be unaffected by the "no past slots" filter,

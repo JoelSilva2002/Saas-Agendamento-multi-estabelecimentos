@@ -54,6 +54,11 @@ model Establishment {
   noShowFeeEnabled           Boolean @default(false) @map("no_show_fee_enabled")
   noShowFeePercentage        Int?    @map("no_show_fee_percentage")
 
+  // Deposit / advance-payment policy (Fase 5): mirrors the no-show fee policy above —
+  // percentage of the service price charged upfront when a "deposit" payment is created.
+  depositEnabled    Boolean @default(false) @map("deposit_enabled")
+  depositPercentage Int?    @map("deposit_percentage")
+
   tenant                 Tenant                       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   membershipRoles        UserTenantRole[]
   serviceCategories      ServiceCategory[]
@@ -61,6 +66,7 @@ model Establishment {
   employees              Employee[]
   businessHours          EstablishmentBusinessHours[]
   availabilityExceptions AvailabilityException[]
+  notifications          Notification[]
   agendaBlocks           AgendaBlock[]
   appointments           Appointment[]
   payments               Payment[]
@@ -115,6 +121,7 @@ model User {
   waitlistEntries       WaitlistEntry[]
   reviews               Review[]
   couponRedemptions     CouponRedemption[]
+  notificationsReceived Notification[]
 
   @@map("users")
 }
@@ -421,6 +428,7 @@ model Appointment {
   payments         Payment[]
   review           Review?
   couponRedemption CouponRedemption?
+  notifications    Notification[]
 
   // Composite index tuned for slot search: "is employee X free between T1 and T2 at
   // establishment E" is the hottest query in the whole system (availability engine).
@@ -469,6 +477,50 @@ model Payment {
   @@index([appointmentId])
   @@index([establishmentId, status])
   @@map("payments")
+}
+
+enum NotificationChannel {
+  whatsapp
+  email
+}
+
+enum NotificationType {
+  confirmation
+  reminder_24h
+  reminder_2h
+  cancellation
+}
+
+enum NotificationStatus {
+  pending
+  sent
+  failed
+}
+
+model Notification {
+  id              String              @id @default(uuid())
+  establishmentId String              @map("establishment_id")
+  appointmentId   String              @map("appointment_id")
+  recipientUserId String              @map("recipient_user_id")
+  channel         NotificationChannel
+  type            NotificationType
+  status          NotificationStatus  @default(pending)
+  message         String
+  errorMessage    String?             @map("error_message")
+  sentAt          DateTime?           @map("sent_at")
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
+
+  establishment Establishment @relation(fields: [establishmentId], references: [id], onDelete: Cascade)
+  appointment   Appointment   @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  recipient     User          @relation(fields: [recipientUserId], references: [id])
+
+  // Idempotency: the reminders cron and the create/cancel event listeners both check this
+  // before dispatching, so a duplicate trigger (e.g. two overlapping cron ticks) never
+  // sends the same notification twice.
+  @@unique([appointmentId, type, channel])
+  @@index([establishmentId, appointmentId])
+  @@map("notifications")
 }
 
 enum WaitlistPeriod {

@@ -6,11 +6,20 @@ import request from 'supertest';
 
 export const PLATFORM_ADMIN_PASSWORD = 'PlatformAdmin123!';
 
-export async function createPlatformAdmin(prisma: PrismaClient): Promise<{ id: string; email: string }> {
+export async function createPlatformAdmin(
+  prisma: PrismaClient,
+): Promise<{ id: string; email: string }> {
   const email = `platform-admin-${randomUUID()}@test.local`;
   const passwordHash = await argon2.hash(PLATFORM_ADMIN_PASSWORD, { type: argon2.argon2id });
   const user = await prisma.user.create({
-    data: { id: randomUUID(), email, passwordHash, firstName: 'Platform', lastName: 'Admin', isPlatformAdmin: true },
+    data: {
+      id: randomUUID(),
+      email,
+      passwordHash,
+      firstName: 'Platform',
+      lastName: 'Admin',
+      isPlatformAdmin: true,
+    },
   });
   return { id: user.id, email: user.email };
 }
@@ -25,7 +34,10 @@ export async function login(
   email: string,
   password: string,
 ): Promise<{ accessToken: string; refreshToken: string }> {
-  const response = await request(app.getHttpServer()).post('/auth/login').send({ email, password }).expect(200);
+  const response = await request(app.getHttpServer())
+    .post('/auth/login')
+    .send({ email, password })
+    .expect(200);
   return { accessToken: response.body.accessToken, refreshToken: response.body.refreshToken };
 }
 
@@ -60,4 +72,23 @@ export async function createTenantWithOwner(
     .expect(201);
 
   return { tenantId: response.body.id, ownerEmail, ownerPassword };
+}
+
+/** Registers a client via the public self-registration endpoint and logs them in — used to
+ * exercise the `:own`-permission side of the API (as opposed to staff). */
+export async function registerClient(
+  app: INestApplication,
+  tenantId: string,
+  establishmentId: string,
+  slug: string,
+): Promise<{ accessToken: string; userId: string }> {
+  const email = `${slug}-${randomUUID()}@test.local`;
+  const password = 'ClientPassword123!';
+  const response = await request(app.getHttpServer())
+    .post('/auth/register')
+    .send({ tenantId, establishmentId, email, password, firstName: 'Cliente', lastName: 'Teste' })
+    .expect(201);
+
+  const { accessToken } = await login(app, email, password);
+  return { accessToken, userId: response.body.user.id };
 }

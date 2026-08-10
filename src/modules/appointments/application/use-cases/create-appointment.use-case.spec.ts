@@ -1,3 +1,4 @@
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { CreateAppointmentUseCase } from './create-appointment.use-case';
 import { ServiceRepositoryPort } from '../../../services/domain/service.repository.port';
 import { EmployeeRepositoryPort } from '../../../employees/domain/employee.repository.port';
@@ -7,7 +8,11 @@ import { Employee } from '../../../employees/domain/entities/employee.entity';
 import { Appointment } from '../../domain/entities/appointment.entity';
 import { ServiceNotFoundError } from '../../../services/domain/errors/service-errors';
 import { EmployeeNotFoundError } from '../../../employees/domain/errors/employee-errors';
-import { EmployeeNotEligibleForServiceError, SlotNotAvailableError } from '../../domain/errors/appointment-errors';
+import {
+  EmployeeNotEligibleForServiceError,
+  SlotNotAvailableError,
+} from '../../domain/errors/appointment-errors';
+import { APPOINTMENT_CREATED_EVENT } from '../../domain/events/appointment-events';
 
 describe('CreateAppointmentUseCase', () => {
   const service = Service.create({
@@ -60,9 +65,17 @@ describe('CreateAppointmentUseCase', () => {
       ...overrides?.appointmentRepository,
     } as unknown as AppointmentRepositoryPort;
 
+    const eventEmitter = { emitAsync: jest.fn().mockResolvedValue([]) } as unknown as EventEmitter2;
+
     return {
-      useCase: new CreateAppointmentUseCase(serviceRepository, employeeRepository, appointmentRepository),
+      useCase: new CreateAppointmentUseCase(
+        serviceRepository,
+        employeeRepository,
+        appointmentRepository,
+        eventEmitter,
+      ),
       appointmentRepository,
+      eventEmitter,
     };
   }
 
@@ -93,6 +106,17 @@ describe('CreateAppointmentUseCase', () => {
     );
   });
 
+  it('emits appointment.created with the new appointment data', async () => {
+    const { useCase, eventEmitter } = build();
+
+    await useCase.execute(input);
+
+    expect(eventEmitter.emitAsync).toHaveBeenCalledWith(
+      APPOINTMENT_CREATED_EVENT,
+      expect.objectContaining({ appointmentId: 'appointment-1', clientId: 'client-1' }),
+    );
+  });
+
   it('passes isFitIn through to the repository when set', async () => {
     const { useCase, appointmentRepository } = build();
 
@@ -104,22 +128,30 @@ describe('CreateAppointmentUseCase', () => {
   });
 
   it('throws ServiceNotFoundError when the service is missing or inactive', async () => {
-    const { useCase } = build({ serviceRepository: { findById: jest.fn().mockResolvedValue(null) } });
+    const { useCase } = build({
+      serviceRepository: { findById: jest.fn().mockResolvedValue(null) },
+    });
     await expect(useCase.execute(input)).rejects.toThrow(ServiceNotFoundError);
 
     const inactiveService = service.deactivate();
-    const { useCase: useCase2 } = build({ serviceRepository: { findById: jest.fn().mockResolvedValue(inactiveService) } });
+    const { useCase: useCase2 } = build({
+      serviceRepository: { findById: jest.fn().mockResolvedValue(inactiveService) },
+    });
     await expect(useCase2.execute(input)).rejects.toThrow(ServiceNotFoundError);
   });
 
   it('throws EmployeeNotFoundError when the employee is missing or inactive', async () => {
-    const { useCase } = build({ employeeRepository: { findById: jest.fn().mockResolvedValue(null) } });
+    const { useCase } = build({
+      employeeRepository: { findById: jest.fn().mockResolvedValue(null) },
+    });
     await expect(useCase.execute(input)).rejects.toThrow(EmployeeNotFoundError);
   });
 
   it('throws EmployeeNotEligibleForServiceError when the employee cannot perform the service', async () => {
     const { useCase, appointmentRepository } = build({
-      serviceRepository: { findEligibleEmployeeIds: jest.fn().mockResolvedValue(['some-other-employee']) },
+      serviceRepository: {
+        findEligibleEmployeeIds: jest.fn().mockResolvedValue(['some-other-employee']),
+      },
     });
 
     await expect(useCase.execute(input)).rejects.toThrow(EmployeeNotEligibleForServiceError);
@@ -128,7 +160,9 @@ describe('CreateAppointmentUseCase', () => {
 
   it('propagates SlotNotAvailableError from the repository', async () => {
     const { useCase } = build({
-      appointmentRepository: { createIfAvailable: jest.fn().mockRejectedValue(new SlotNotAvailableError()) },
+      appointmentRepository: {
+        createIfAvailable: jest.fn().mockRejectedValue(new SlotNotAvailableError()),
+      },
     });
 
     await expect(useCase.execute(input)).rejects.toThrow(SlotNotAvailableError);
