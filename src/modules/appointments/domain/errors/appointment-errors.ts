@@ -62,3 +62,11 @@ export class AppointmentAccessDeniedError extends ForbiddenError {
     super('Este agendamento não pertence a você');
   }
 }
+
+/** The scanned/typed check-in token doesn't match the HMAC computed for this appointment —
+ * either forged, corrupted, or meant for a different appointment. */
+export class InvalidCheckInTokenError extends ValidationError {
+  constructor() {
+    super('Código de check-in inválido para este agendamento');
+  }
+}

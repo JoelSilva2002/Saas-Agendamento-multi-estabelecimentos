@@ -5,6 +5,8 @@ import { AppointmentNotFoundError } from '../../../appointments/domain/errors/ap
 import { Appointment } from '../../../appointments/domain/entities/appointment.entity';
 import { EstablishmentRepositoryPort } from '../../../establishments/domain/establishment.repository.port';
 import { EstablishmentNotFoundError } from '../../../establishments/domain/errors/establishment-errors';
+import { CouponRepositoryPort } from '../../../coupons/domain/coupon.repository.port';
+import { ValidateCouponUseCase } from '../../../coupons/application/use-cases/validate-coupon.use-case';
 import { PaymentRepositoryPort } from '../../domain/payment.repository.port';
 import { PaymentGatewayPort } from '../../domain/payment-gateway.port';
 import {
@@ -26,6 +28,7 @@ export interface CreatePaymentInput {
   appointmentId: string;
   method: PaymentMethod;
   paymentType: PaymentType;
+  couponCode?: string;
 }
 
 @Injectable()
@@ -35,6 +38,8 @@ export class CreatePaymentUseCase {
     private readonly establishmentRepository: EstablishmentRepositoryPort,
     private readonly paymentRepository: PaymentRepositoryPort,
     private readonly paymentGateway: PaymentGatewayPort,
+    private readonly couponRepository: CouponRepositoryPort,
+    private readonly validateCoupon: ValidateCouponUseCase,
   ) {}
 
   async execute(input: CreatePaymentInput): Promise<Payment> {
@@ -49,7 +54,35 @@ export class CreatePaymentUseCase {
       throw new AppointmentNotPayableError(appointment.status);
     }
 
-    const amountCents = await this.resolveAmountCents(input, appointment);
+    const baseAmountCents = await this.resolveAmountCents(input, appointment);
+
+    let amountCents = baseAmountCents;
+    let couponId: string | null = null;
+    let discountCents = 0;
+    if (input.couponCode) {
+      const validated = await this.validateCoupon.execute({
+        tenantId: input.tenantId,
+        establishmentId: input.establishmentId,
+        code: input.couponCode,
+        amountCents: baseAmountCents,
+      });
+      couponId = validated.couponId;
+      discountCents = validated.discountCents;
+      amountCents = baseAmountCents - discountCents;
+    }
+
+    // Committed before the charge/payment are created — if a concurrent redemption already
+    // used up the last slot, we fail here with nothing else written yet.
+    if (couponId) {
+      await this.couponRepository.redeem({
+        id: randomUUID(),
+        couponId,
+        appointmentId: input.appointmentId,
+        clientId: appointment.clientId,
+        discountAppliedCents: discountCents,
+      });
+    }
+
     const id = randomUUID();
 
     let externalReference: string | null = null;

@@ -32,10 +32,19 @@ const PERMISSIONS: Array<{ key: string; description: string }> = [
   { key: 'payment:read', description: 'Visualizar pagamentos do estabelecimento' },
   { key: 'waitlist:manage', description: 'Gerenciar a lista de espera do estabelecimento' },
   { key: 'waitlist:create:own', description: 'Entrar na lista de espera (cliente)' },
+  {
+    key: 'waitlist:read:own',
+    description: 'Visualizar as próprias entradas na lista de espera (cliente)',
+  },
+  {
+    key: 'waitlist:cancel:own',
+    description: 'Cancelar a própria entrada na lista de espera (cliente)',
+  },
   { key: 'review:read', description: 'Visualizar avaliações do estabelecimento' },
   { key: 'review:create:own', description: 'Avaliar o próprio atendimento (cliente)' },
   { key: 'coupon:manage', description: 'Criar e gerenciar cupons de desconto' },
   { key: 'dashboard:read', description: 'Visualizar o resumo diário do estabelecimento' },
+  { key: 'report:read', description: 'Visualizar relatórios analíticos do estabelecimento' },
 ];
 
 const ROLE_PERMISSIONS: Record<string, string[]> = {
@@ -62,6 +71,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'review:read',
     'coupon:manage',
     'dashboard:read',
+    'report:read',
   ],
   manager: [
     'establishment:read',
@@ -84,6 +94,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'review:read',
     'coupon:manage',
     'dashboard:read',
+    'report:read',
   ],
   // Recepção: opera a agenda e recebe pagamentos, mas não configura serviços/funcionários.
   receptionist: [
@@ -100,6 +111,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'waitlist:manage',
     'review:read',
     'dashboard:read',
+    'report:read',
   ],
   // Funcionário: enxerga a própria agenda e o catálogo, gerencia a própria jornada/folgas.
   employee: [
@@ -124,6 +136,8 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'appointment:cancel:own',
     'appointment:reschedule:own',
     'waitlist:create:own',
+    'waitlist:read:own',
+    'waitlist:cancel:own',
     'review:create:own',
   ],
 };

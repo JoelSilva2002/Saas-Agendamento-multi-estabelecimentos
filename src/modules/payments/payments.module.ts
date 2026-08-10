@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AppointmentsModule } from '../appointments/appointments.module';
+import { CouponsModule } from '../coupons/coupons.module';
 import { PaymentRepositoryPort } from './domain/payment.repository.port';
 import { PaymentGatewayPort } from './domain/payment-gateway.port';
 import { PrismaPaymentRepository } from './infrastructure/persistence/prisma-payment.repository';
@@ -13,7 +14,9 @@ import { PaymentsController } from './presentation/payments.controller';
 import { PaymentsWebhookController } from './presentation/payments-webhook.controller';
 
 @Module({
-  imports: [AppointmentsModule],
+  // One-directional: Payments imports Coupons to validate/redeem at payment time; Coupons
+  // never imports Payments.
+  imports: [AppointmentsModule, CouponsModule],
   controllers: [PaymentsController, PaymentsWebhookController],
   providers: [
     { provide: PaymentRepositoryPort, useClass: PrismaPaymentRepository },

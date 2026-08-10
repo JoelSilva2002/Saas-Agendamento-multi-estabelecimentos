@@ -2,6 +2,8 @@ import { ValidationError } from '../../../../shared-kernel/domain/domain-error';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+export type ThemePreference = 'light' | 'dark' | 'system';
+
 export interface UserProps {
   id: string;
   email: string;
@@ -10,6 +12,7 @@ export interface UserProps {
   lastName: string;
   isActive: boolean;
   isPlatformAdmin: boolean;
+  themePreference: ThemePreference;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -46,6 +49,7 @@ export class User {
       lastName: props.lastName.trim(),
       isActive: true,
       isPlatformAdmin: props.isPlatformAdmin ?? false,
+      themePreference: 'system',
       createdAt: now,
       updatedAt: now,
     });
@@ -83,7 +87,16 @@ export class User {
     return this.props.isPlatformAdmin;
   }
 
-  update(changes: { firstName?: string; lastName?: string; isActive?: boolean }): User {
+  get themePreference(): ThemePreference {
+    return this.props.themePreference;
+  }
+
+  update(changes: {
+    firstName?: string;
+    lastName?: string;
+    isActive?: boolean;
+    themePreference?: ThemePreference;
+  }): User {
     const firstName = changes.firstName?.trim() ?? this.props.firstName;
     if (firstName.length === 0) {
       throw new ValidationError('User requer um primeiro nome');
@@ -93,6 +106,7 @@ export class User {
       firstName,
       lastName: changes.lastName?.trim() ?? this.props.lastName,
       isActive: changes.isActive ?? this.props.isActive,
+      themePreference: changes.themePreference ?? this.props.themePreference,
       updatedAt: new Date(),
     });
   }

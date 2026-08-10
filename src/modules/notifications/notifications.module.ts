@@ -32,5 +32,9 @@ import { NotificationsController } from './presentation/notifications.controller
     ListAppointmentNotificationsUseCase,
     RemindersCron,
   ],
+  // WhatsAppNotifierPort/EmailNotifierPort are reused directly by WaitlistModule (Fase 6) —
+  // a waitlist alert isn't anchored to an appointmentId, so it can't go through
+  // NotificationDispatcherService/the notifications table, only through the raw channels.
+  exports: [WhatsAppNotifierPort, EmailNotifierPort],
 })
 export class NotificationsModule {}

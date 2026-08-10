@@ -11,6 +11,7 @@ export class UserMapper {
       lastName: record.lastName,
       isActive: record.isActive,
       isPlatformAdmin: record.isPlatformAdmin,
+      themePreference: record.themePreference,
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
     });

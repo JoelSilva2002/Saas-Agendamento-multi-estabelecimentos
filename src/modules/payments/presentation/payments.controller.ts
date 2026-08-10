@@ -30,6 +30,7 @@ export class PaymentsController {
       appointmentId: dto.appointmentId,
       method: dto.method,
       paymentType: dto.paymentType,
+      couponCode: dto.couponCode,
     });
     return this.toResponse(payment);
   }

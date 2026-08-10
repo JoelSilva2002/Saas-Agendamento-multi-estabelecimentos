@@ -1,16 +1,28 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { LoginUseCase } from '../application/use-cases/login.use-case';
 import { RefreshSessionUseCase } from '../application/use-cases/refresh-session.use-case';
 import { LogoutUseCase } from '../application/use-cases/logout.use-case';
 import { LoginRequestDto } from './dto/login.request.dto';
 import { RefreshRequestDto } from './dto/refresh.request.dto';
 import { RegisterClientRequestDto } from './dto/register-client.request.dto';
+import { UpdateThemePreferenceRequestDto } from './dto/update-theme-preference.request.dto';
 import { Public } from './decorators/public.decorator';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../domain/request-context.types';
 import { MembershipRepositoryPort } from '../../rbac/domain/membership.repository.port';
 import { RegisterClientUseCase } from '../../clients/application/use-cases/register-client.use-case';
+import { UserRepositoryPort } from '../../users/domain/user.repository.port';
+import { UserNotFoundError } from '../../users/domain/errors/user-errors';
 
 @Controller('auth')
 export class AuthController {
@@ -20,6 +32,7 @@ export class AuthController {
     private readonly logoutUseCase: LogoutUseCase,
     private readonly membershipRepository: MembershipRepositoryPort,
     private readonly registerClientUseCase: RegisterClientUseCase,
+    private readonly userRepository: UserRepositoryPort,
   ) {}
 
   @Public()
@@ -77,11 +90,29 @@ export class AuthController {
   @Get('me')
   async me(@CurrentUser() user: AuthenticatedUser) {
     const memberships = await this.membershipRepository.findAllGrantsForUser(user.id);
+    const fullUser = await this.userRepository.findById(user.id);
     return {
       id: user.id,
       email: user.email,
       isPlatformAdmin: user.isPlatformAdmin,
+      themePreference: fullUser?.themePreference ?? 'system',
       memberships,
     };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('me')
+  async updateMe(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: UpdateThemePreferenceRequestDto,
+  ) {
+    const fullUser = await this.userRepository.findById(user.id);
+    if (!fullUser) {
+      throw new UserNotFoundError(user.id);
+    }
+    const updated = await this.userRepository.update(
+      fullUser.update({ themePreference: dto.themePreference }),
+    );
+    return { id: updated.id, email: updated.email, themePreference: updated.themePreference };
   }
 }

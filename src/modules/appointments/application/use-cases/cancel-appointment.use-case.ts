@@ -56,6 +56,8 @@ export class CancelAppointmentUseCase {
       appointmentId: saved.id,
       establishmentId: saved.establishmentId,
       clientId: saved.clientId,
+      employeeId: saved.employeeId,
+      serviceId: saved.serviceId,
       startAt: saved.startAt,
       cancellationReason: saved.cancellationReason as string,
       cancelledById: saved.cancelledById as string,

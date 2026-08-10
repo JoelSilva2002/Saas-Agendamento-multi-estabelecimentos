@@ -17,7 +17,10 @@ export class PrismaUserRepository implements UserRepositoryPort {
       const created = await this.prisma.user.create({ data: UserMapper.toPersistence(user) });
       return UserMapper.toDomain(created);
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === PRISMA_UNIQUE_CONSTRAINT_VIOLATION) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === PRISMA_UNIQUE_CONSTRAINT_VIOLATION
+      ) {
         throw new DuplicateEmailError(user.email);
       }
       throw error;
@@ -42,6 +45,7 @@ export class PrismaUserRepository implements UserRepositoryPort {
         firstName: props.firstName,
         lastName: props.lastName,
         isActive: props.isActive,
+        themePreference: props.themePreference,
         updatedAt: props.updatedAt,
       },
     });

@@ -96,16 +96,25 @@ model EstablishmentBusinessHours {
   @@map("establishment_business_hours")
 }
 
+enum ThemePreference {
+  light
+  dark
+  system
+}
+
 model User {
-  id              String   @id @default(uuid())
-  email           String   @unique
-  passwordHash    String   @map("password_hash")
-  firstName       String   @map("first_name")
-  lastName        String   @map("last_name")
-  isActive        Boolean  @default(true) @map("is_active")
-  isPlatformAdmin Boolean  @default(false) @map("is_platform_admin")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  id              String          @id @default(uuid())
+  email           String          @unique
+  passwordHash    String          @map("password_hash")
+  firstName       String          @map("first_name")
+  lastName        String          @map("last_name")
+  isActive        Boolean         @default(true) @map("is_active")
+  isPlatformAdmin Boolean         @default(false) @map("is_platform_admin")
+  // Personal UI preference, not tenant-scoped — the same user could be staff at one
+  // establishment and a client at another, but there's only one of them behind the screen.
+  themePreference ThemePreference @default(system) @map("theme_preference")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
 
   tenantRoles   UserTenantRole[]
   refreshTokens RefreshToken[]

@@ -19,6 +19,8 @@ export interface AppointmentCancelledEvent {
   appointmentId: string;
   establishmentId: string;
   clientId: string;
+  employeeId: string;
+  serviceId: string;
   startAt: Date;
   cancellationReason: string;
   cancelledById: string;

@@ -185,6 +185,24 @@ export class Appointment {
     });
   }
 
+  /** QR check-in: the client (or staff on their behalf) showed up. Only valid from the two
+   * pre-visit statuses — once in progress or further, checking in again is meaningless,
+   * which also makes the check-in token effectively single-use without needing its own
+   * expiry (see checkin-token.util.ts). */
+  checkIn(): Appointment {
+    if (this.props.status !== 'pending' && this.props.status !== 'confirmed') {
+      throw new InvalidAppointmentStatusTransitionError(this.props.status);
+    }
+    return new Appointment({ ...this.props, status: 'in_progress', updatedAt: new Date() });
+  }
+
+  /** Staff marks the visit as finished. Reviews and the sales/productivity reports only
+   * count appointments that reached this status. */
+  complete(): Appointment {
+    this.assertNotTerminal();
+    return new Appointment({ ...this.props, status: 'completed', updatedAt: new Date() });
+  }
+
   private assertNotTerminal(): void {
     if (TERMINAL_STATUSES.includes(this.props.status)) {
       throw new InvalidAppointmentStatusTransitionError(this.props.status);

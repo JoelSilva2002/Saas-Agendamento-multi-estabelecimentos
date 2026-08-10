@@ -1,4 +1,4 @@
-import { IsIn, IsUUID } from 'class-validator';
+import { IsIn, IsOptional, IsString, IsUUID } from 'class-validator';
 import { PaymentMethod, PaymentType } from '../../domain/entities/payment.entity';
 
 const METHODS: PaymentMethod[] = ['pix', 'card', 'cash'];
@@ -13,4 +13,8 @@ export class CreatePaymentRequestDto {
 
   @IsIn(TYPES)
   paymentType!: PaymentType;
+
+  @IsOptional()
+  @IsString()
+  couponCode?: string;
 }

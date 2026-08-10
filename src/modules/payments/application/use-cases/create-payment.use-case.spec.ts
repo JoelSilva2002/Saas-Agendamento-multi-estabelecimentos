@@ -3,6 +3,8 @@ import { AppointmentRepositoryPort } from '../../../appointments/domain/appointm
 import { EstablishmentRepositoryPort } from '../../../establishments/domain/establishment.repository.port';
 import { PaymentRepositoryPort } from '../../domain/payment.repository.port';
 import { PaymentGatewayPort } from '../../domain/payment-gateway.port';
+import { CouponRepositoryPort } from '../../../coupons/domain/coupon.repository.port';
+import { ValidateCouponUseCase } from '../../../coupons/application/use-cases/validate-coupon.use-case';
 import { Appointment } from '../../../appointments/domain/entities/appointment.entity';
 import { Establishment } from '../../../establishments/domain/entities/establishment.entity';
 import { Payment } from '../../domain/entities/payment.entity';
@@ -30,6 +32,8 @@ describe('CreatePaymentUseCase', () => {
     establishmentRepository?: Partial<EstablishmentRepositoryPort>;
     paymentRepository?: Partial<PaymentRepositoryPort>;
     paymentGateway?: Partial<PaymentGatewayPort>;
+    couponRepository?: Partial<CouponRepositoryPort>;
+    validateCoupon?: Partial<ValidateCouponUseCase>;
   }) {
     const appointmentRepository: AppointmentRepositoryPort = {
       findById: jest.fn().mockResolvedValue(appointment),
@@ -62,15 +66,29 @@ describe('CreatePaymentUseCase', () => {
       ...overrides?.paymentGateway,
     } as unknown as PaymentGatewayPort;
 
+    const couponRepository: CouponRepositoryPort = {
+      redeem: jest.fn().mockResolvedValue(undefined),
+      ...overrides?.couponRepository,
+    } as unknown as CouponRepositoryPort;
+
+    const validateCoupon = {
+      execute: jest.fn(),
+      ...overrides?.validateCoupon,
+    } as unknown as ValidateCouponUseCase;
+
     return {
       useCase: new CreatePaymentUseCase(
         appointmentRepository,
         establishmentRepository,
         paymentRepository,
         paymentGateway,
+        couponRepository,
+        validateCoupon,
       ),
       paymentRepository,
       paymentGateway,
+      couponRepository,
+      validateCoupon,
     };
   }
 
@@ -154,5 +172,47 @@ describe('CreatePaymentUseCase', () => {
       appointmentRepository: { findById: jest.fn().mockResolvedValue(cancelled) },
     });
     await expect(useCase.execute(baseInput)).rejects.toThrow(AppointmentNotPayableError);
+  });
+
+  it('applies the coupon discount to the charged amount and redeems it before charging', async () => {
+    const { useCase, paymentGateway, paymentRepository, couponRepository, validateCoupon } = build({
+      validateCoupon: {
+        execute: jest.fn().mockResolvedValue({ couponId: 'coupon-1', discountCents: 2000 }),
+      },
+    });
+
+    await useCase.execute({ ...baseInput, couponCode: 'PROMO10' });
+
+    expect(validateCoupon.execute).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 'PROMO10', amountCents: 10000 }),
+    );
+    expect(couponRepository.redeem).toHaveBeenCalledWith(
+      expect.objectContaining({
+        couponId: 'coupon-1',
+        appointmentId: 'appointment-1',
+        discountAppliedCents: 2000,
+      }),
+    );
+    expect(paymentGateway.createCharge).toHaveBeenCalledWith(
+      expect.objectContaining({ amountCents: 8000 }),
+    );
+    expect(paymentRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({ amountCents: 8000 }),
+    );
+  });
+
+  it('never calls the gateway or creates a payment when coupon redemption fails', async () => {
+    const { useCase, paymentGateway, paymentRepository } = build({
+      validateCoupon: {
+        execute: jest.fn().mockResolvedValue({ couponId: 'coupon-1', discountCents: 2000 }),
+      },
+      couponRepository: { redeem: jest.fn().mockRejectedValue(new Error('exhausted')) },
+    });
+
+    await expect(useCase.execute({ ...baseInput, couponCode: 'PROMO10' })).rejects.toThrow(
+      'exhausted',
+    );
+    expect(paymentGateway.createCharge).not.toHaveBeenCalled();
+    expect(paymentRepository.create).not.toHaveBeenCalled();
   });
 });

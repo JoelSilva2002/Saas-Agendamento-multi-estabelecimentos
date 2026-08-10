@@ -17,6 +17,10 @@ import { AppointmentsModule } from './modules/appointments/appointments.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { WaitlistModule } from './modules/waitlist/waitlist.module';
+import { CouponsModule } from './modules/coupons/coupons.module';
+import { ReviewsModule } from './modules/reviews/reviews.module';
+import { ReportsModule } from './modules/reports/reports.module';
 
 @Module({
   imports: [
@@ -40,6 +44,10 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
     NotificationsModule,
     PaymentsModule,
     DashboardModule,
+    WaitlistModule,
+    CouponsModule,
+    ReviewsModule,
+    ReportsModule,
   ],
 })
 export class AppModule {}

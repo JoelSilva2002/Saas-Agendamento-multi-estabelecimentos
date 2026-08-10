@@ -10,6 +10,9 @@ import { RescheduleAppointmentUseCase } from './application/use-cases/reschedule
 import { MarkNoShowUseCase } from './application/use-cases/mark-no-show.use-case';
 import { GetAppointmentUseCase } from './application/use-cases/get-appointment.use-case';
 import { ListAppointmentsUseCase } from './application/use-cases/list-appointments.use-case';
+import { CompleteAppointmentUseCase } from './application/use-cases/complete-appointment.use-case';
+import { CheckInAppointmentUseCase } from './application/use-cases/check-in-appointment.use-case';
+import { ExportAppointmentsUseCase } from './application/use-cases/export-appointments.use-case';
 import { AppointmentsController } from './presentation/appointments.controller';
 
 @Module({
@@ -24,6 +27,9 @@ import { AppointmentsController } from './presentation/appointments.controller';
     MarkNoShowUseCase,
     GetAppointmentUseCase,
     ListAppointmentsUseCase,
+    CompleteAppointmentUseCase,
+    CheckInAppointmentUseCase,
+    ExportAppointmentsUseCase,
   ],
   exports: [AppointmentRepositoryPort],
 })

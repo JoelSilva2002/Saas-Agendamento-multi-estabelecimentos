@@ -113,4 +113,31 @@ describe('Appointment', () => {
       expect(() => completed.markNoShow(null)).toThrow(InvalidAppointmentStatusTransitionError);
     });
   });
+
+  describe('checkIn', () => {
+    it('transitions pending to in_progress', () => {
+      const appointment = buildAppointment();
+      expect(appointment.checkIn().status).toBe('in_progress');
+    });
+
+    it('rejects check-in on an appointment already in progress or further along', () => {
+      const inProgress = buildAppointment().checkIn();
+      expect(() => inProgress.checkIn()).toThrow(InvalidAppointmentStatusTransitionError);
+
+      const cancelled = buildAppointment().cancel('Motivo', 'client-1');
+      expect(() => cancelled.checkIn()).toThrow(InvalidAppointmentStatusTransitionError);
+    });
+  });
+
+  describe('complete', () => {
+    it('transitions to completed', () => {
+      const appointment = buildAppointment();
+      expect(appointment.complete().status).toBe('completed');
+    });
+
+    it('rejects completing an already-terminal appointment', () => {
+      const cancelled = buildAppointment().cancel('Motivo', 'client-1');
+      expect(() => cancelled.complete()).toThrow(InvalidAppointmentStatusTransitionError);
+    });
+  });
 });

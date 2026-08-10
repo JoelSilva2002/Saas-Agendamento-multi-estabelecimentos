@@ -9,7 +9,11 @@ import {
   Patch,
   Post,
   Query,
+  Res,
 } from '@nestjs/common';
+import { Response } from 'express';
+import { ConfigService } from '@nestjs/config';
+import { AppConfig } from '../../../config/configuration';
 import { GetAvailableSlotsUseCase } from '../application/use-cases/get-available-slots.use-case';
 import { CreateAppointmentUseCase } from '../application/use-cases/create-appointment.use-case';
 import { CancelAppointmentUseCase } from '../application/use-cases/cancel-appointment.use-case';
@@ -17,17 +21,25 @@ import { RescheduleAppointmentUseCase } from '../application/use-cases/reschedul
 import { MarkNoShowUseCase } from '../application/use-cases/mark-no-show.use-case';
 import { GetAppointmentUseCase } from '../application/use-cases/get-appointment.use-case';
 import { ListAppointmentsUseCase } from '../application/use-cases/list-appointments.use-case';
+import { CompleteAppointmentUseCase } from '../application/use-cases/complete-appointment.use-case';
+import { CheckInAppointmentUseCase } from '../application/use-cases/check-in-appointment.use-case';
+import { ExportAppointmentsUseCase } from '../application/use-cases/export-appointments.use-case';
 import { GetAvailableSlotsRequestDto } from './dto/get-available-slots.request.dto';
 import { CreateAppointmentRequestDto } from './dto/create-appointment.request.dto';
 import { CancelAppointmentRequestDto } from './dto/cancel-appointment.request.dto';
 import { RescheduleAppointmentRequestDto } from './dto/reschedule-appointment.request.dto';
 import { ListAppointmentsRequestDto } from './dto/list-appointments.request.dto';
+import { CheckInAppointmentRequestDto } from './dto/check-in-appointment.request.dto';
+import { ExportAppointmentsRequestDto } from './dto/export-appointments.request.dto';
 import { Auth } from '../../auth/presentation/decorators/auth.decorator';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { CurrentTenant } from '../../auth/presentation/decorators/current-tenant.decorator';
 import { AuthenticatedUser, TenantContext } from '../../auth/domain/request-context.types';
 import { AvailableSlot } from '../domain/services/availability-calculator.service';
 import { Appointment } from '../domain/entities/appointment.entity';
+import { computeCheckInToken } from '../domain/services/checkin-token.util';
+import { CsvAppointmentFormatter } from './formatters/csv-appointment.formatter';
+import { PdfAppointmentFormatter } from './formatters/pdf-appointment.formatter';
 
 @Controller('tenants/:tenantId/establishments/:establishmentId')
 export class AppointmentsController {
@@ -39,6 +51,10 @@ export class AppointmentsController {
     private readonly markNoShow: MarkNoShowUseCase,
     private readonly getAppointment: GetAppointmentUseCase,
     private readonly listAppointments: ListAppointmentsUseCase,
+    private readonly completeAppointment: CompleteAppointmentUseCase,
+    private readonly checkInAppointment: CheckInAppointmentUseCase,
+    private readonly exportAppointments: ExportAppointmentsUseCase,
+    private readonly configService: ConfigService<AppConfig, true>,
   ) {}
 
   @Get('availability')
@@ -113,6 +129,35 @@ export class AppointmentsController {
     return appointments.map((appointment) => this.toAppointmentResponse(appointment));
   }
 
+  // Must be declared before `appointments/:appointmentId` — Nest/Express matches routes in
+  // declaration order for the same method, so a static segment ("export") needs to come
+  // before the dynamic one or it gets swallowed as an :appointmentId value.
+  @Get('appointments/export')
+  @Auth('appointment:read')
+  async export(
+    @Param('establishmentId') establishmentId: string,
+    @Query() query: ExportAppointmentsRequestDto,
+    @Res() res: Response,
+  ) {
+    const appointments = await this.exportAppointments.execute({
+      establishmentId,
+      fromDate: query.fromDate,
+      toDate: query.toDate,
+    });
+
+    if (query.format === 'csv') {
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename="agenda.csv"');
+      res.send(CsvAppointmentFormatter.format(appointments));
+      return;
+    }
+
+    const pdf = await PdfAppointmentFormatter.format(appointments);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename="agenda.pdf"');
+    res.send(pdf);
+  }
+
   @Get('appointments/:appointmentId')
   @Auth('appointment:read', 'appointment:read:own')
   async getOne(
@@ -181,6 +226,38 @@ export class AppointmentsController {
     @Param('appointmentId') appointmentId: string,
   ) {
     const appointment = await this.markNoShow.execute({ tenantId, establishmentId, appointmentId });
+    return this.toAppointmentResponse(appointment);
+  }
+
+  @Patch('appointments/:appointmentId/complete')
+  @Auth('appointment:update')
+  async complete(
+    @Param('establishmentId') establishmentId: string,
+    @Param('appointmentId') appointmentId: string,
+  ) {
+    const appointment = await this.completeAppointment.execute({ establishmentId, appointmentId });
+    return this.toAppointmentResponse(appointment);
+  }
+
+  @Get('appointments/:appointmentId/checkin-token')
+  @Auth('appointment:read', 'appointment:read:own')
+  checkInToken(@Param('appointmentId') appointmentId: string) {
+    const secret = this.configService.get('jwt', { infer: true }).accessSecret;
+    return { appointmentId, token: computeCheckInToken(appointmentId, secret) };
+  }
+
+  @Post('appointments/:appointmentId/checkin')
+  @Auth('appointment:update')
+  async checkIn(
+    @Param('establishmentId') establishmentId: string,
+    @Param('appointmentId') appointmentId: string,
+    @Body() dto: CheckInAppointmentRequestDto,
+  ) {
+    const appointment = await this.checkInAppointment.execute({
+      establishmentId,
+      appointmentId,
+      token: dto.token,
+    });
     return this.toAppointmentResponse(appointment);
   }
 
