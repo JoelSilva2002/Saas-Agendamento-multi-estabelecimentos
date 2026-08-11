@@ -22,6 +22,7 @@ import { WaitlistModule } from './modules/waitlist/waitlist.module';
 import { CouponsModule } from './modules/coupons/coupons.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
 import { ReportsModule } from './modules/reports/reports.module';
+import { PublicModule } from './modules/public/public.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { ReportsModule } from './modules/reports/reports.module';
     CouponsModule,
     ReviewsModule,
     ReportsModule,
+    PublicModule,
   ],
 })
 export class AppModule {}

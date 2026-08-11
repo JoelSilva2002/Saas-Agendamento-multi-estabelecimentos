@@ -35,11 +35,7 @@ export class UpdateEstablishmentUseCase {
     }
 
     if (input.slug && input.slug !== existing.slug) {
-      const slugTaken = await this.establishmentRepository.existsWithSlug(
-        input.tenantId,
-        input.slug,
-        existing.id,
-      );
+      const slugTaken = await this.establishmentRepository.existsWithSlug(input.slug, existing.id);
       if (slugTaken) {
         throw new DuplicateEstablishmentSlugError(input.slug);
       }

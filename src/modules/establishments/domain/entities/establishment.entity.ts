@@ -60,9 +60,7 @@ export class Establishment {
     if (!props.name || props.name.trim().length === 0) {
       throw new ValidationError('Establishment requer um nome não vazio');
     }
-    if (!props.slug || props.slug.trim().length === 0) {
-      throw new ValidationError('Establishment requer um slug não vazio');
-    }
+    Establishment.assertUsableSlug(props.slug);
 
     const cancellationMinHoursNotice = props.cancellationMinHoursNotice ?? 24;
     const noShowFeeEnabled = props.noShowFeeEnabled ?? false;
@@ -113,6 +111,21 @@ export class Establishment {
       createdAt: now,
       updatedAt: now,
     });
+  }
+
+  /** The slug is the establishment's public URL (/<slug>), so it cannot be a word the app
+   * already routes to — a "buscar" establishment would be permanently unreachable, shadowed
+   * by the search page. Keep in sync with the static routes under app/(public). */
+  private static readonly RESERVED_SLUGS = ['buscar', 'login', 'admin', 'superadmin', 'public'];
+
+  private static assertUsableSlug(slug: string | undefined): void {
+    const normalized = slug?.trim().toLowerCase();
+    if (!normalized) {
+      throw new ValidationError('Establishment requer um slug não vazio');
+    }
+    if (Establishment.RESERVED_SLUGS.includes(normalized)) {
+      throw new ValidationError(`'${normalized}' é uma palavra reservada e não pode ser um slug`);
+    }
   }
 
   /** Shared invariant for both noShowFeePercentage and depositPercentage: null iff the
@@ -214,9 +227,7 @@ export class Establishment {
     if (name.length === 0) {
       throw new ValidationError('Establishment requer um nome não vazio');
     }
-    if (slug.length === 0) {
-      throw new ValidationError('Establishment requer um slug não vazio');
-    }
+    Establishment.assertUsableSlug(slug);
 
     const cancellationMinHoursNotice =
       changes.cancellationMinHoursNotice ?? this.props.cancellationMinHoursNotice;

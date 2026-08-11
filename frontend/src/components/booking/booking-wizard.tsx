@@ -6,19 +6,30 @@ import { useForm } from "react-hook-form";
 
 import { BookingSuccess } from "@/components/booking/booking-success";
 import { ConfirmationStep } from "@/components/booking/steps/confirmation-step";
-import { CouponStep } from "@/components/booking/steps/coupon-step";
 import { DateStep } from "@/components/booking/steps/date-step";
 import { IdentificationStep } from "@/components/booking/steps/identification-step";
-import { PaymentStep } from "@/components/booking/steps/payment-step";
 import { ProfessionalStep } from "@/components/booking/steps/professional-step";
 import { ServiceStep } from "@/components/booking/steps/service-step";
 import { TimeSlotsStep } from "@/components/booking/steps/time-slots-step";
 import { WizardNav } from "@/components/booking/wizard-nav";
 import { WizardProgress } from "@/components/booking/wizard-progress";
-import { createMockBookingApi } from "@/lib/booking/mock-api";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useAsync } from "@/hooks/use-async";
-import type { CouponPreview, CreatedAppointment, CreatedPayment, TimeSlot } from "@/lib/booking/types";
+import { ApiError } from "@/lib/api/client";
+import { createAppointment } from "@/lib/appointments/api";
+import type { Appointment } from "@/lib/appointments/types";
+import { login, register } from "@/lib/auth/api";
+import { getAccessToken, setTokens } from "@/lib/auth/token-storage";
 import {
+  getEstablishment,
+  listAvailableSlots,
+  listEligibleEmployees,
+  listServices,
+} from "@/lib/public/api";
+import type { PublicSlot } from "@/lib/public/types";
+import {
+  AUTH_STEP,
   BOOKING_STEP_COUNT,
   bookingFormSchema,
   defaultBookingFormValues,
@@ -27,19 +38,15 @@ import {
 } from "@/lib/schemas/booking-schema";
 
 export function BookingWizard({ establishmentSlug }: { establishmentSlug: string }) {
-  const [api] = useState(() => createMockBookingApi());
   const [step, setStep] = useState(1);
+  // Someone who already signed in (from the header, or a previous booking) should not be
+  // asked to authenticate again — read once on mount so the value stays stable per session.
+  const [wasAlreadySignedIn] = useState(() => Boolean(getAccessToken()));
 
   const [authError, setAuthError] = useState<string | undefined>();
-  const [coupon, setCoupon] = useState<CouponPreview | null>(null);
-  const [couponError, setCouponError] = useState<string | null>(null);
-  const [isCheckingCoupon, setIsCheckingCoupon] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | undefined>();
-  const [bookingResult, setBookingResult] = useState<{
-    appointment: CreatedAppointment;
-    payment: CreatedPayment;
-  } | null>(null);
+  const [bookingResult, setBookingResult] = useState<Appointment | null>(null);
 
   const form = useForm<BookingFormValues>({
     resolver: zodResolver(bookingFormSchema),
@@ -51,21 +58,28 @@ export function BookingWizard({ establishmentSlug }: { establishmentSlug: string
   const employeeId = form.watch("employeeId");
   const date = form.watch("date");
 
-  const servicesQuery = useAsync(() => api.listServices(), [api]);
+  const establishmentQuery = useAsync(
+    () => getEstablishment(establishmentSlug),
+    [establishmentSlug],
+  );
+  const establishment =
+    establishmentQuery.status === "success" ? establishmentQuery.data : undefined;
+
+  const servicesQuery = useAsync(() => listServices(establishmentSlug), [establishmentSlug]);
   const services = servicesQuery.status === "success" ? servicesQuery.data : [];
   const selectedService = services.find((s) => s.id === serviceId);
 
   const employeesQuery = useAsync(
-    () => api.listEligibleEmployees(serviceId),
-    [api, serviceId],
+    () => listEligibleEmployees(establishmentSlug, serviceId),
+    [establishmentSlug, serviceId],
     Boolean(serviceId),
   );
   const employees = employeesQuery.status === "success" ? employeesQuery.data : [];
   const selectedEmployee = employees.find((e) => e.id === employeeId);
 
   const slotsQuery = useAsync(
-    () => api.listAvailableSlots({ serviceId, employeeId, date }),
-    [api, serviceId, employeeId, date],
+    () => listAvailableSlots(establishmentSlug, { serviceId, employeeId, date }),
+    [establishmentSlug, serviceId, employeeId, date],
     Boolean(serviceId && employeeId && date),
   );
   const slots = slotsQuery.status === "success" ? slotsQuery.data : [];
@@ -91,55 +105,54 @@ export function BookingWizard({ establishmentSlug }: { establishmentSlug: string
     form.setValue("slotEndAt", "");
   }
 
-  function handleSelectSlot(slot: TimeSlot) {
+  function handleSelectSlot(slot: PublicSlot) {
     form.setValue("slotStartAt", slot.startAt, { shouldValidate: true });
     form.setValue("slotEndAt", slot.endAt, { shouldValidate: true });
   }
 
-  async function applyCoupon(code: string) {
-    setIsCheckingCoupon(true);
-    setCouponError(null);
-    try {
-      const priceCents = selectedService ? Math.round(selectedService.price * 100) : 0;
-      const result = await api.previewCoupon({ code, amountCents: priceCents });
-      setCoupon(result);
-      form.setValue("couponCode", result.code);
-      return true;
-    } catch (err) {
-      setCoupon(null);
-      setCouponError(err instanceof Error ? err.message : "Cupom inválido");
-      return false;
-    } finally {
-      setIsCheckingCoupon(false);
-    }
-  }
+  /** Signs the visitor in (or creates their account) so the booking can be attributed to them.
+   * The appointment endpoint derives clientId from the token, never from the request body. */
+  async function authenticate(values: BookingFormValues): Promise<void> {
+    if (!establishment) throw new Error("Estabelecimento não carregado");
 
-  function clearCoupon() {
-    setCoupon(null);
-    setCouponError(null);
-    form.setValue("couponCode", "");
+    if (values.authMode === "register") {
+      await register({
+        tenantId: establishment.tenantId,
+        establishmentId: establishment.establishmentId,
+        email: values.email,
+        password: values.password,
+        firstName: values.firstName ?? "",
+        lastName: values.lastName ?? "",
+        phone: values.phone,
+      });
+    }
+
+    // Register does not return tokens, so both paths finish with a login.
+    const result = await login(values.email, values.password);
+    setTokens(result);
   }
 
   async function submitBooking() {
+    if (!establishment) return;
     setIsSubmitting(true);
     setSubmitError(undefined);
     try {
       const values = form.getValues();
-      const appointment = await api.createAppointment({
-        serviceId: values.serviceId,
-        employeeId: values.employeeId,
-        startAt: values.slotStartAt,
-      });
-      const payment = await api.createPayment({
-        appointmentId: appointment.id,
-        method: values.paymentMethod,
-        paymentType: values.paymentType,
-        couponCode: coupon?.code,
-      });
-      setBookingResult({ appointment, payment });
+      const appointment = await createAppointment(
+        establishment.tenantId,
+        establishment.establishmentId,
+        {
+          // clientId is deliberately omitted: for a client-role caller the backend always
+          // attributes the booking to the authenticated user.
+          employeeId: values.employeeId,
+          serviceId: values.serviceId,
+          startAt: values.slotStartAt,
+        },
+      );
+      setBookingResult(appointment);
     } catch (err) {
       setSubmitError(
-        err instanceof Error ? err.message : "Não foi possível concluir o agendamento",
+        err instanceof ApiError ? err.message : "Não foi possível concluir o agendamento",
       );
     } finally {
       setIsSubmitting(false);
@@ -147,49 +160,31 @@ export function BookingWizard({ establishmentSlug }: { establishmentSlug: string
   }
 
   async function goNext() {
+    // Skip identification entirely for an already-authenticated client: its fields are empty
+    // and would fail validation for a step we do not need to run.
+    if (step === AUTH_STEP - 1 && wasAlreadySignedIn) {
+      const valid = await form.trigger(STEP_FIELDS[step], { shouldFocus: true });
+      if (valid) setStep(AUTH_STEP + 1);
+      return;
+    }
+
     const fields = STEP_FIELDS[step];
     const valid = await form.trigger(fields, { shouldFocus: true });
     if (!valid) return;
 
-    if (step === 5) {
+    if (step === AUTH_STEP) {
       setIsSubmitting(true);
       setAuthError(undefined);
       try {
-        const values = form.getValues();
-        if (values.authMode === "login") {
-          await api.login({ email: values.email, password: values.password });
-        } else {
-          await api.register({
-            email: values.email,
-            password: values.password,
-            firstName: values.firstName ?? "",
-            lastName: values.lastName ?? "",
-            phone: values.phone ?? "",
-          });
-        }
-        setStep(6);
+        await authenticate(form.getValues());
+        setStep(AUTH_STEP + 1);
       } catch (err) {
-        setAuthError(err instanceof Error ? err.message : "Não foi possível continuar");
+        setAuthError(
+          err instanceof ApiError ? err.message : "Não foi possível continuar",
+        );
       } finally {
         setIsSubmitting(false);
       }
-      return;
-    }
-
-    if (step === 6) {
-      const code = form.getValues("couponCode")?.trim();
-      if (!code) {
-        setCoupon(null);
-        setCouponError(null);
-        setStep(7);
-        return;
-      }
-      if (coupon?.code === code.toUpperCase()) {
-        setStep(7);
-        return;
-      }
-      const ok = await applyCoupon(code);
-      if (ok) setStep(7);
       return;
     }
 
@@ -202,15 +197,36 @@ export function BookingWizard({ establishmentSlug }: { establishmentSlug: string
   }
 
   function goBack() {
-    setStep((s) => Math.max(1, s - 1));
+    setStep((s) => {
+      const previous = s === AUTH_STEP + 1 && wasAlreadySignedIn ? AUTH_STEP - 1 : s - 1;
+      return Math.max(1, previous);
+    });
+  }
+
+  if (establishmentQuery.status === "error") {
+    return (
+      <div className="mx-auto w-full max-w-2xl px-4 py-10">
+        <Alert variant="destructive">
+          <AlertDescription>Estabelecimento não encontrado.</AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  if (establishmentQuery.status !== "success") {
+    return (
+      <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 py-10">
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
   }
 
   if (bookingResult) {
     return (
       <BookingSuccess
         establishmentSlug={establishmentSlug}
-        appointment={bookingResult.appointment}
-        payment={bookingResult.payment}
+        appointment={bookingResult}
         service={selectedService}
       />
     );
@@ -221,8 +237,6 @@ export function BookingWizard({ establishmentSlug }: { establishmentSlug: string
     (step === 2 && !employeeId) ||
     (step === 3 && !date) ||
     (step === 4 && !form.watch("slotStartAt"));
-
-  const navSubmitting = isSubmitting || (step === 6 && isCheckingCoupon);
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-6 sm:py-10">
@@ -265,22 +279,10 @@ export function BookingWizard({ establishmentSlug }: { establishmentSlug: string
           )}
           {step === 5 && <IdentificationStep form={form} authError={authError} />}
           {step === 6 && (
-            <CouponStep
-              form={form}
-              coupon={coupon}
-              couponError={couponError}
-              isChecking={isCheckingCoupon}
-              onApply={applyCoupon}
-              onClear={clearCoupon}
-            />
-          )}
-          {step === 7 && <PaymentStep form={form} service={selectedService} coupon={coupon} />}
-          {step === 8 && (
             <ConfirmationStep
               form={form}
               service={selectedService}
               employee={selectedEmployee}
-              coupon={coupon}
               submitError={submitError}
             />
           )}
@@ -292,7 +294,7 @@ export function BookingWizard({ establishmentSlug }: { establishmentSlug: string
           onBack={goBack}
           onNext={() => void goNext()}
           nextDisabled={nextDisabled}
-          isSubmitting={navSubmitting}
+          isSubmitting={isSubmitting}
         />
       </form>
     </div>

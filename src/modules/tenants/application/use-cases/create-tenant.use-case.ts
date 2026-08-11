@@ -8,6 +8,7 @@ import { RoleNotFoundError } from '../../../rbac/domain/errors/rbac-errors';
 import { PasswordHasherPort } from '../../../auth/application/ports/password-hasher.port';
 import { EstablishmentRepositoryPort } from '../../../establishments/domain/establishment.repository.port';
 import { Establishment } from '../../../establishments/domain/entities/establishment.entity';
+import { DuplicateEstablishmentSlugError } from '../../../establishments/domain/errors/establishment-errors';
 
 const OWNER_ROLE_NAME = 'owner';
 const TEMPORARY_PASSWORD_BYTES = 9;
@@ -48,6 +49,15 @@ export class CreateTenantUseCase {
     const slugTaken = await this.tenantRepository.existsWithSlug(input.slug);
     if (slugTaken) {
       throw new DuplicateTenantSlugError(input.slug);
+    }
+
+    // The establishment slug is the public booking URL, unique platform-wide — check it here
+    // too, or onboarding would only fail at the DB constraint, as an opaque 500.
+    const establishmentSlugTaken = await this.establishmentRepository.existsWithSlug(
+      input.establishmentSlug,
+    );
+    if (establishmentSlugTaken) {
+      throw new DuplicateEstablishmentSlugError(input.establishmentSlug);
     }
 
     const ownerRole = await this.roleRepository.findByName(OWNER_ROLE_NAME);

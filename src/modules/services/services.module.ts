@@ -36,6 +36,8 @@ import { ServiceCategoriesController } from './presentation/service-categories.c
     SetServiceEmployeesUseCase,
     ListEligibleEmployeesUseCase,
   ],
-  exports: [ServiceRepositoryPort],
+  // ListServices/ListEligibleEmployees are re-exported for the public (unauthenticated)
+  // catalogue in PublicModule — same use-cases, different entry point.
+  exports: [ServiceRepositoryPort, ListServicesUseCase, ListEligibleEmployeesUseCase],
 })
 export class ServicesModule {}

@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { formatTime } from "@/lib/booking/date-utils";
 import { cn } from "@/lib/utils";
-import type { TimeSlot } from "@/lib/booking/types";
+import type { PublicSlot } from "@/lib/public/types";
 import type { BookingStepProps } from "@/components/booking/step-props";
 
 export function TimeSlotsStep({
@@ -12,10 +12,10 @@ export function TimeSlotsStep({
   error,
   onSelect,
 }: BookingStepProps & {
-  slots: TimeSlot[];
+  slots: PublicSlot[];
   status: "idle" | "loading" | "success" | "error";
   error?: string;
-  onSelect: (slot: TimeSlot) => void;
+  onSelect: (slot: PublicSlot) => void;
 }) {
   const selected = form.watch("slotStartAt");
   const fieldError = form.formState.errors.slotStartAt?.message;

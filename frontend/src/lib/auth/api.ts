@@ -20,6 +20,25 @@ export function login(email: string, password: string): Promise<LoginResult> {
   });
 }
 
+export type RegisterClientInput = {
+  tenantId: string;
+  establishmentId: string;
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  phone?: string;
+};
+
+// Self-service client signup from the public booking flow. Returns the created user but no
+// tokens — the caller still has to log in.
+export function register(input: RegisterClientInput): Promise<{ user: AuthUser }> {
+  return apiFetch<{ user: AuthUser }>("/auth/register", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
 export function logout(refreshToken: string): Promise<void> {
   return apiFetch<void>("/auth/logout", {
     method: "POST",

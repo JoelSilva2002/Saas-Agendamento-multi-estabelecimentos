@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../../shared-kernel/infrastructure/prisma.service';
 import { Establishment } from '../../domain/entities/establishment.entity';
-import { EstablishmentRepositoryPort } from '../../domain/establishment.repository.port';
+import {
+  EstablishmentRepositoryPort,
+  PublicEstablishmentFilters,
+} from '../../domain/establishment.repository.port';
 import { EstablishmentMapper } from './establishment.mapper';
 
 @Injectable()
@@ -74,10 +77,40 @@ export class PrismaEstablishmentRepository implements EstablishmentRepositoryPor
     });
   }
 
-  async existsWithSlug(tenantId: string, slug: string, excludeId?: string): Promise<boolean> {
+  async existsWithSlug(slug: string, excludeId?: string): Promise<boolean> {
     const count = await this.prisma.establishment.count({
-      where: { tenantId, slug, id: excludeId ? { not: excludeId } : undefined },
+      where: { slug, id: excludeId ? { not: excludeId } : undefined },
     });
     return count > 0;
+  }
+
+  async findBySlug(slug: string): Promise<Establishment | null> {
+    const found = await this.prisma.establishment.findFirst({ where: { slug, deletedAt: null } });
+    return found ? EstablishmentMapper.toDomain(found) : null;
+  }
+
+  async findPublic(filters: PublicEstablishmentFilters): Promise<Establishment[]> {
+    const records = await this.prisma.establishment.findMany({
+      where: {
+        deletedAt: null,
+        // Only tenants in good standing show up publicly — a suspended or cancelled
+        // establishment must not keep taking bookings.
+        tenant: { status: 'active' },
+        addressCity: filters.city ? { equals: filters.city, mode: 'insensitive' } : undefined,
+        name: filters.search ? { contains: filters.search, mode: 'insensitive' } : undefined,
+      },
+      orderBy: { name: 'asc' },
+    });
+    return records.map(EstablishmentMapper.toDomain);
+  }
+
+  async listCities(): Promise<string[]> {
+    const rows = await this.prisma.establishment.findMany({
+      where: { deletedAt: null, tenant: { status: 'active' }, addressCity: { not: null } },
+      distinct: ['addressCity'],
+      select: { addressCity: true },
+      orderBy: { addressCity: 'asc' },
+    });
+    return rows.map((row) => row.addressCity!).filter((city) => city.trim().length > 0);
   }
 }

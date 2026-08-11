@@ -4,19 +4,17 @@ import { CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatFullDate, formatTime } from "@/lib/booking/date-utils";
-import { formatCentsToBRL } from "@/lib/booking/pricing";
-import type { CreatedAppointment, CreatedPayment, Service } from "@/lib/booking/types";
+import type { Appointment } from "@/lib/appointments/types";
+import type { PublicService } from "@/lib/public/types";
 
 export function BookingSuccess({
   establishmentSlug,
   appointment,
-  payment,
   service,
 }: {
   establishmentSlug: string;
-  appointment: CreatedAppointment;
-  payment: CreatedPayment;
-  service?: Service;
+  appointment: Appointment;
+  service?: PublicService;
 }) {
   const dateKey = appointment.startAt.slice(0, 10);
 
@@ -25,7 +23,7 @@ export function BookingSuccess({
       <CheckCircle2 className="size-16 text-primary" />
       <h1 className="text-2xl font-semibold">Agendamento confirmado!</h1>
       <p className="text-muted-foreground">
-        Enviamos os detalhes para o seu e-mail. Chegue com alguns minutos de antecedência.
+        Guarde os detalhes abaixo. Chegue com alguns minutos de antecedência.
       </p>
 
       <Card className="w-full text-left">
@@ -43,10 +41,13 @@ export function BookingSuccess({
             <span className="font-medium">{formatTime(appointment.startAt)}</span>
           </div>
           <div className="flex justify-between border-t pt-2">
-            <span className="text-muted-foreground">
-              {payment.status === "paid" ? "Pago agora" : "Pagamento pendente"}
+            <span className="text-muted-foreground">Valor</span>
+            <span className="font-semibold">
+              {(appointment.priceCents / 100).toLocaleString("pt-BR", {
+                style: "currency",
+                currency: "BRL",
+              })}
             </span>
-            <span className="font-semibold">{formatCentsToBRL(payment.amountCents)}</span>
           </div>
         </CardContent>
       </Card>

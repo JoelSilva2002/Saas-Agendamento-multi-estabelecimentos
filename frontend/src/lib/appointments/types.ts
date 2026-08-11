@@ -29,7 +29,9 @@ export type ListAppointmentsParams = {
 };
 
 export type CreateAppointmentInput = {
-  clientId: string;
+  /** Staff bookings only. Omitted for self-service: the backend forces the caller's own id
+   * when the token lacks the broad `appointment:create` permission. */
+  clientId?: string;
   employeeId: string;
   serviceId: string;
   startAt: string;

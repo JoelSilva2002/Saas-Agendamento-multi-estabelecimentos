@@ -57,7 +57,10 @@ model Establishment {
   id        String    @id @default(uuid())
   tenantId  String    @map("tenant_id")
   name      String
-  slug      String
+  // Globally unique: it is the public booking URL (/<slug>), so it cannot collide across
+  // tenants. Soft-deleted rows keep holding their slug on purpose — reusing a retired
+  // establishment's URL would silently redirect its old links somewhere else.
+  slug      String    @unique
   timezone  String    @default("UTC")
   deletedAt DateTime? @map("deleted_at")
   createdAt DateTime  @default(now()) @map("created_at")
@@ -101,8 +104,8 @@ model Establishment {
   coupons                Coupon[]
   clientProfiles         ClientProfile[]
 
-  @@unique([tenantId, slug])
   @@index([tenantId])
+  @@index([addressCity])
   @@map("establishments")
 }
 

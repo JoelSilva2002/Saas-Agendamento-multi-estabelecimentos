@@ -18,5 +18,7 @@ import { ReviewsController } from './presentation/reviews.controller';
     GetReviewSummaryUseCase,
     DeleteReviewUseCase,
   ],
+  // The public establishment page shows the average rating.
+  exports: [GetReviewSummaryUseCase],
 })
 export class ReviewsModule {}

@@ -31,6 +31,7 @@ import { AppointmentsController } from './presentation/appointments.controller';
     CheckInAppointmentUseCase,
     ExportAppointmentsUseCase,
   ],
-  exports: [AppointmentRepositoryPort],
+  // GetAvailableSlots is re-exported for the public booking flow in PublicModule.
+  exports: [AppointmentRepositoryPort, GetAvailableSlotsUseCase],
 })
 export class AppointmentsModule {}

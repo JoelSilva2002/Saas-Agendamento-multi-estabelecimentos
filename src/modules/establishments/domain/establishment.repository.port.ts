@@ -1,5 +1,10 @@
 import { Establishment } from './entities/establishment.entity';
 
+export interface PublicEstablishmentFilters {
+  city?: string;
+  search?: string;
+}
+
 export abstract class EstablishmentRepositoryPort {
   abstract create(establishment: Establishment): Promise<Establishment>;
 
@@ -21,5 +26,14 @@ export abstract class EstablishmentRepositoryPort {
 
   abstract softDelete(id: string, tenantId: string): Promise<void>;
 
-  abstract existsWithSlug(tenantId: string, slug: string, excludeId?: string): Promise<boolean>;
+  /** Slug uniqueness is platform-wide, not per-tenant: the slug IS the public booking URL. */
+  abstract existsWithSlug(slug: string, excludeId?: string): Promise<boolean>;
+
+  /** Public directory lookups — no tenant scoping by design, these back the unauthenticated
+   * client-facing pages. Only non-deleted establishments are ever returned. */
+  abstract findBySlug(slug: string): Promise<Establishment | null>;
+  abstract findPublic(filters: PublicEstablishmentFilters): Promise<Establishment[]>;
+
+  /** Distinct cities that currently have at least one establishment, for the search filter. */
+  abstract listCities(): Promise<string[]>;
 }

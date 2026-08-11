@@ -14,6 +14,9 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
             AgendaSaaS
           </Link>
           <div className="flex items-center gap-2">
+            <Button variant="ghost" asChild>
+              <Link href="/buscar">Explorar</Link>
+            </Button>
             <ThemeToggle />
             <Button asChild>
               <Link href="/login">Entrar</Link>

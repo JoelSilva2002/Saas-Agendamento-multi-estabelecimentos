@@ -23,7 +23,7 @@ export class CreateEstablishmentUseCase {
   constructor(private readonly establishmentRepository: EstablishmentRepositoryPort) {}
 
   async execute(input: CreateEstablishmentInput): Promise<Establishment> {
-    const slugTaken = await this.establishmentRepository.existsWithSlug(input.tenantId, input.slug);
+    const slugTaken = await this.establishmentRepository.existsWithSlug(input.slug);
     if (slugTaken) {
       throw new DuplicateEstablishmentSlugError(input.slug);
     }

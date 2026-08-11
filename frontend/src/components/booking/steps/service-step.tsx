@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { SelectableCard } from "@/components/booking/selectable-card";
 import { formatCentsToBRL } from "@/lib/booking/pricing";
-import type { Service } from "@/lib/booking/types";
+import type { PublicService } from "@/lib/public/types";
 import type { BookingStepProps } from "@/components/booking/step-props";
 
 export function ServiceStep({
@@ -12,7 +12,7 @@ export function ServiceStep({
   error,
   onSelect,
 }: BookingStepProps & {
-  services: Service[];
+  services: PublicService[];
   status: "idle" | "loading" | "success" | "error";
   error?: string;
   onSelect: (serviceId: string) => void;

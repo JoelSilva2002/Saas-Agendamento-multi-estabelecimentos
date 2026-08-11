@@ -1,7 +1,7 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { SelectableCard } from "@/components/booking/selectable-card";
-import type { Employee } from "@/lib/booking/types";
+import type { PublicEmployee } from "@/lib/public/types";
 import type { BookingStepProps } from "@/components/booking/step-props";
 
 export function ProfessionalStep({
@@ -11,7 +11,7 @@ export function ProfessionalStep({
   error,
   onSelect,
 }: BookingStepProps & {
-  employees: Employee[];
+  employees: PublicEmployee[];
   status: "idle" | "loading" | "success" | "error";
   error?: string;
   onSelect: (employeeId: string) => void;
@@ -57,7 +57,7 @@ export function ProfessionalStep({
               key={employee.id}
               selected={selected === employee.id}
               onSelect={() => onSelect(employee.id)}
-              title={employee.displayName}
+              title={employee.name}
               subtitle={employee.jobTitle}
             />
           ))}
