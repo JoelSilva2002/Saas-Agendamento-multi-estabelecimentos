@@ -21,8 +21,10 @@ export function login(email: string, password: string): Promise<LoginResult> {
 }
 
 export type RegisterClientInput = {
-  tenantId: string;
-  establishmentId: string;
+  /** Omitted when signing up from the login page: the client role grant is created later, on
+   * the first booking. Sent when signing up mid-booking, which pins the account right away. */
+  tenantId?: string;
+  establishmentId?: string;
   email: string;
   password: string;
   firstName: string;

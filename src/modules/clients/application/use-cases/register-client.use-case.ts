@@ -15,8 +15,11 @@ import { ClientProfile } from '../../domain/entities/client-profile.entity';
 const CLIENT_ROLE_NAME = 'client';
 
 export interface RegisterClientInput {
-  tenantId: string;
-  establishmentId: string;
+  /** Both optional: an account can be created straight from the login page, before the person
+   * has picked anywhere to book. The client role grant and profile are then created the first
+   * time they actually book, via EnsureClientMembershipUseCase. */
+  tenantId?: string;
+  establishmentId?: string;
   email: string;
   password: string;
   firstName: string;
@@ -27,7 +30,8 @@ export interface RegisterClientInput {
 
 export interface RegisterClientOutput {
   user: User;
-  clientProfile: ClientProfile;
+  /** Absent for a standalone signup — there is no establishment to profile against yet. */
+  clientProfile?: ClientProfile;
 }
 
 @Injectable()
@@ -42,8 +46,12 @@ export class RegisterClientUseCase {
   ) {}
 
   async execute(input: RegisterClientInput): Promise<RegisterClientOutput> {
-    const establishment = await this.establishmentRepository.findById(input.establishmentId, input.tenantId);
-    if (!establishment || establishment.deletedAt) {
+    // Signing up mid-booking pins the account to that establishment right away; signing up
+    // from the login page has nowhere to pin it to yet.
+    const establishment = input.establishmentId
+      ? await this.establishmentRepository.findById(input.establishmentId, input.tenantId ?? '')
+      : null;
+    if (input.establishmentId && (!establishment || establishment.deletedAt)) {
       throw new EstablishmentNotFoundError(input.establishmentId);
     }
 
@@ -58,11 +66,6 @@ export class RegisterClientUseCase {
       throw new DuplicateEmailError(normalizedEmail);
     }
 
-    const clientRole = await this.roleRepository.findByName(CLIENT_ROLE_NAME);
-    if (!clientRole) {
-      throw new RoleNotFoundError(CLIENT_ROLE_NAME);
-    }
-
     const passwordHash = await this.passwordHasher.hash(input.password);
     const newUser = User.create({
       id: randomUUID(),
@@ -73,16 +76,25 @@ export class RegisterClientUseCase {
     });
     const createdUser = await this.userRepository.create(newUser);
 
+    if (!establishment) {
+      return { user: createdUser };
+    }
+
+    const clientRole = await this.roleRepository.findByName(CLIENT_ROLE_NAME);
+    if (!clientRole) {
+      throw new RoleNotFoundError(CLIENT_ROLE_NAME);
+    }
+
     await this.assignRoleUseCase.execute({
       userId: createdUser.id,
-      tenantId: input.tenantId,
+      tenantId: establishment.tenantId,
       roleId: clientRole.id,
-      establishmentId: input.establishmentId,
+      establishmentId: establishment.id,
     });
 
     const clientProfile = ClientProfile.create({
       id: randomUUID(),
-      establishmentId: input.establishmentId,
+      establishmentId: establishment.id,
       userId: createdUser.id,
       phone: input.phone,
       birthDate: input.birthDate,

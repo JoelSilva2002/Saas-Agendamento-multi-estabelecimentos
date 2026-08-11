@@ -21,6 +21,7 @@ import { createAppointment } from "@/lib/appointments/api";
 import type { Appointment } from "@/lib/appointments/types";
 import { login, register } from "@/lib/auth/api";
 import { getAccessToken, setTokens } from "@/lib/auth/token-storage";
+import { joinEstablishment } from "@/lib/my-appointments/api";
 import {
   getEstablishment,
   listAvailableSlots,
@@ -138,6 +139,9 @@ export function BookingWizard({ establishmentSlug }: { establishmentSlug: string
     setSubmitError(undefined);
     try {
       const values = form.getValues();
+      // Guarantees the client role grant exists at this establishment before booking: an
+      // account created from the login page has none yet. Idempotent for everyone else.
+      await joinEstablishment(establishmentSlug);
       const appointment = await createAppointment(
         establishment.tenantId,
         establishment.establishmentId,

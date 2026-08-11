@@ -6,8 +6,10 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 
+import { ClientSignupForm } from "@/components/public/client-signup-form";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -64,10 +66,21 @@ export default function ClientLoginPage() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Entrar</CardTitle>
+        <CardTitle>Sua conta</CardTitle>
         <CardDescription>Acesse seus agendamentos e histórico.</CardDescription>
       </CardHeader>
       <CardContent>
+        <Tabs defaultValue="login">
+          <TabsList className="w-full">
+            <TabsTrigger value="login" className="flex-1">
+              Entrar
+            </TabsTrigger>
+            <TabsTrigger value="signup" className="flex-1">
+              Criar conta
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="login" className="mt-4">
         <form onSubmit={form.handleSubmit(handleSubmit)} className="flex flex-col gap-4">
           <Field data-invalid={!!form.formState.errors.email}>
             <FieldLabel htmlFor="email">E-mail</FieldLabel>
@@ -103,15 +116,14 @@ export default function ClientLoginPage() {
             {isSubmitting ? "Entrando..." : "Entrar"}
           </Button>
         </form>
+          </TabsContent>
 
-        <p className="mt-4 text-center text-sm text-muted-foreground">
-          Ainda não tem conta? Ela é criada na hora do seu primeiro agendamento —{" "}
-          <Link href="/buscar" className="text-primary underline underline-offset-4">
-            encontre um estabelecimento
-          </Link>
-          .
-        </p>
-        <p className="mt-3 border-t pt-3 text-center text-sm text-muted-foreground">
+          <TabsContent value="signup" className="mt-4">
+            <ClientSignupForm />
+          </TabsContent>
+        </Tabs>
+
+        <p className="mt-4 border-t pt-3 text-center text-sm text-muted-foreground">
           É um estabelecimento?{" "}
           <Link href="/login" className="text-primary underline underline-offset-4">
             Acesse o painel

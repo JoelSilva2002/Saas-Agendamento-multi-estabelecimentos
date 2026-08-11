@@ -1,11 +1,15 @@
 import { IsDateString, IsEmail, IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
 
 export class RegisterClientRequestDto {
+  // Sent when signing up mid-booking; omitted when signing up from the login page, where no
+  // establishment has been chosen yet.
+  @IsOptional()
   @IsUUID()
-  tenantId!: string;
+  tenantId?: string;
 
+  @IsOptional()
   @IsUUID()
-  establishmentId!: string;
+  establishmentId?: string;
 
   @IsEmail()
   email!: string;

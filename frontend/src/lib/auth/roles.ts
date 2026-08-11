@@ -16,7 +16,12 @@ export function hasStaffAccess(me: MeResponse): boolean {
   return me.memberships.some((membership) => membership.roleName !== CLIENT_ROLE);
 }
 
-/** Whether the account has a client grant somewhere, i.e. can use the client area. */
+/**
+ * Whether the account belongs in the client area.
+ *
+ * Defined as "not staff" rather than "has a client grant": an account created from the login
+ * page has no grant at all until its first booking, and it is still a client.
+ */
 export function hasClientAccess(me: MeResponse): boolean {
-  return me.memberships.some((membership) => membership.roleName === CLIENT_ROLE);
+  return !hasStaffAccess(me);
 }

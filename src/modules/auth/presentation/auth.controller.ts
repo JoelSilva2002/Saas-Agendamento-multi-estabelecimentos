@@ -80,12 +80,14 @@ export class AuthController {
         firstName: result.user.firstName,
         lastName: result.user.lastName,
       },
-      clientProfile: {
-        id: result.clientProfile.id,
-        establishmentId: result.clientProfile.establishmentId,
-        phone: result.clientProfile.phone,
-        birthDate: result.clientProfile.birthDate,
-      },
+      clientProfile: result.clientProfile
+        ? {
+            id: result.clientProfile.id,
+            establishmentId: result.clientProfile.establishmentId,
+            phone: result.clientProfile.phone,
+            birthDate: result.clientProfile.birthDate,
+          }
+        : null,
     };
   }
 
