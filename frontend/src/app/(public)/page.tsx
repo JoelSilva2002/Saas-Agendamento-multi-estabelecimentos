@@ -14,10 +14,7 @@ export default function LandingPage() {
       </p>
       <div className="flex gap-3">
         <Button size="lg" asChild>
-          <Link href="/register">Começar agora</Link>
-        </Button>
-        <Button size="lg" variant="outline" asChild>
-          <Link href="/login">Já tenho conta</Link>
+          <Link href="/login">Acessar painel</Link>
         </Button>
       </div>
     </section>

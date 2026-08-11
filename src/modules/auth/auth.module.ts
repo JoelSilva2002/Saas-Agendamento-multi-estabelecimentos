@@ -16,6 +16,7 @@ import { PrismaRefreshTokenRepository } from './infrastructure/persistence/prism
 import { LoginUseCase } from './application/use-cases/login.use-case';
 import { RefreshSessionUseCase } from './application/use-cases/refresh-session.use-case';
 import { LogoutUseCase } from './application/use-cases/logout.use-case';
+import { ChangePasswordUseCase } from './application/use-cases/change-password.use-case';
 import { AuthController } from './presentation/auth.controller';
 import { JwtAuthGuard } from './presentation/guards/jwt-auth.guard';
 import { TenantScopeGuard } from './presentation/guards/tenant-scope.guard';
@@ -52,6 +53,7 @@ import { AppConfig } from '../../config/configuration';
     LoginUseCase,
     RefreshSessionUseCase,
     LogoutUseCase,
+    ChangePasswordUseCase,
     JwtStrategy,
     JwtAuthGuard,
     TenantScopeGuard,

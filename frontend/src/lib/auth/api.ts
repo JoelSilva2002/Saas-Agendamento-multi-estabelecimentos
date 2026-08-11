@@ -40,3 +40,11 @@ export type MeResponse = {
 export function getMe(): Promise<MeResponse> {
   return apiFetch<MeResponse>("/auth/me");
 }
+
+// Revokes every refresh token for the user server-side, so other sessions are cut off.
+export function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+  return apiFetch<void>("/auth/me/password", {
+    method: "PATCH",
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+}

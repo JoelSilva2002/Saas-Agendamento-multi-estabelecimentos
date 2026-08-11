@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Copy } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -18,14 +18,13 @@ import {
 } from "@/components/ui/dialog";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ApiError } from "@/lib/api/client";
 import {
   tenantOnboardingSchema,
   type TenantOnboardingFormValues,
 } from "@/lib/schemas/tenant-onboarding-schema";
 import { createTenant } from "@/lib/tenants/api";
-import { TENANT_PLANS, type CreateTenantOutput } from "@/lib/tenants/types";
+import type { CreateTenantOutput } from "@/lib/tenants/types";
 
 function slugify(value: string): string {
   return value
@@ -36,18 +35,10 @@ function slugify(value: string): string {
     .replace(/(^-|-$)/g, "");
 }
 
-const PLAN_LABEL: Record<(typeof TENANT_PLANS)[number], string> = {
-  free: "Free",
-  starter: "Starter",
-  pro: "Pro",
-  enterprise: "Enterprise",
-};
-
 const DEFAULT_VALUES: TenantOnboardingFormValues = {
   name: "",
   slug: "",
   document: "",
-  plan: "free",
   ownerFirstName: "",
   ownerLastName: "",
   ownerEmail: "",
@@ -175,33 +166,10 @@ export function TenantOnboardingDialog({
                 </Field>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <Field>
-                  <FieldLabel htmlFor="tenant-document">Documento (opcional)</FieldLabel>
-                  <Input id="tenant-document" placeholder="CNPJ/CPF" {...form.register("document")} />
-                </Field>
-                <Field>
-                  <FieldLabel>Plano</FieldLabel>
-                  <Controller
-                    control={form.control}
-                    name="plan"
-                    render={({ field }) => (
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <SelectTrigger className="w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {TENANT_PLANS.map((plan) => (
-                            <SelectItem key={plan} value={plan}>
-                              {PLAN_LABEL[plan]}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  />
-                </Field>
-              </div>
+              <Field>
+                <FieldLabel htmlFor="tenant-document">Documento (opcional)</FieldLabel>
+                <Input id="tenant-document" placeholder="CNPJ/CPF" {...form.register("document")} />
+              </Field>
 
               <div className="grid grid-cols-2 gap-3">
                 <Field data-invalid={!!form.formState.errors.ownerFirstName}>

@@ -32,7 +32,7 @@ describe('CreateTenantUseCase', () => {
           name: 'Barbearia',
           slug: 'barbearia',
           document: null,
-          plan: 'free',
+          plan: 'premium',
           status: 'active',
           createdAt: new Date(),
           updatedAt: new Date(),

@@ -8,19 +8,17 @@ describe('Tenant', () => {
     expect(tenant.slug).toBe('barbearia-do-ze');
     expect(tenant.status).toBe('active');
     expect(tenant.document).toBeNull();
-    expect(tenant.plan).toBe('free');
+    expect(tenant.plan).toBe('premium');
   });
 
-  it('accepts an explicit document and plan', () => {
+  it('accepts an explicit document', () => {
     const tenant = Tenant.create({
       id: '1',
       name: 'Barbearia do Zé',
       slug: 'barbearia-do-ze',
       document: '12.345.678/0001-99',
-      plan: 'pro',
     });
     expect(tenant.document).toBe('12.345.678/0001-99');
-    expect(tenant.plan).toBe('pro');
   });
 
   it('rejects an empty name', () => {

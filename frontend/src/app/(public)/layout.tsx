@@ -15,11 +15,8 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
           </Link>
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            <Button variant="ghost" asChild>
-              <Link href="/login">Entrar</Link>
-            </Button>
             <Button asChild>
-              <Link href="/register">Criar conta</Link>
+              <Link href="/login">Entrar</Link>
             </Button>
           </div>
         </div>

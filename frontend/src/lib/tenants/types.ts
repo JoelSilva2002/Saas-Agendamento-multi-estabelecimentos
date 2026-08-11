@@ -1,14 +1,10 @@
 export type TenantStatus = "active" | "suspended" | "cancelled";
 
-export const TENANT_PLANS = ["free", "starter", "pro", "enterprise"] as const;
-export type TenantPlan = (typeof TENANT_PLANS)[number];
-
 export type Tenant = {
   id: string;
   name: string;
   slug: string;
   document: string | null;
-  plan: string;
   status: TenantStatus;
 };
 
@@ -30,7 +26,6 @@ export type CreateTenantInput = {
   name: string;
   slug: string;
   document?: string;
-  plan?: string;
   ownerEmail: string;
   ownerFirstName: string;
   ownerLastName: string;
@@ -43,7 +38,6 @@ export type CreateTenantOutput = {
   name: string;
   slug: string;
   document: string | null;
-  plan: string;
   status: TenantStatus;
   ownerUserId: string;
   establishment: { id: string; name: string; slug: string };

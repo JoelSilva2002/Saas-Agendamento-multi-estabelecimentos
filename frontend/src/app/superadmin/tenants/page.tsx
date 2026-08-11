@@ -171,7 +171,6 @@ export default function SuperadminTenantsPage() {
               <TableHead>Nome</TableHead>
               <TableHead>Slug</TableHead>
               <TableHead>Documento</TableHead>
-              <TableHead>Plano</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
@@ -202,7 +201,6 @@ export default function SuperadminTenantsPage() {
                   <TableCell className="font-medium">{tenant.name}</TableCell>
                   <TableCell className="text-muted-foreground">{tenant.slug}</TableCell>
                   <TableCell className="text-muted-foreground">{tenant.document ?? "—"}</TableCell>
-                  <TableCell className="capitalize">{tenant.plan}</TableCell>
                   <TableCell>
                     <TenantStatusBadge status={tenant.status} />
                   </TableCell>

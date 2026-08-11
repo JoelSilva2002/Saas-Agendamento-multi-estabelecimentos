@@ -18,7 +18,7 @@ model Tenant {
   name      String
   slug      String       @unique
   document  String?
-  plan      String       @default("free")
+  plan      String       @default("premium")
   status    TenantStatus @default(active)
   createdAt DateTime     @default(now()) @map("created_at")
   updatedAt DateTime     @updatedAt @map("updated_at")

@@ -2,8 +2,9 @@ import { ValidationError } from '../../../../shared-kernel/domain/domain-error';
 
 export type TenantStatus = 'active' | 'suspended' | 'cancelled';
 
-export const TENANT_PLANS = ['free', 'starter', 'pro', 'enterprise'] as const;
-export type TenantPlan = (typeof TENANT_PLANS)[number];
+/** Every tenant gets the full feature set — there are no tiers. The column is kept so the
+ * value is explicit in the data, not so it can vary. */
+export const TENANT_PLAN = 'premium';
 
 export interface TenantProps {
   id: string;
@@ -21,7 +22,6 @@ export interface CreateTenantProps {
   name: string;
   slug: string;
   document?: string | null;
-  plan?: string;
 }
 
 export class Tenant {
@@ -41,7 +41,7 @@ export class Tenant {
       name: props.name.trim(),
       slug: props.slug.trim(),
       document: props.document?.trim() || null,
-      plan: props.plan?.trim() || 'free',
+      plan: TENANT_PLAN,
       status: 'active',
       createdAt: now,
       updatedAt: now,

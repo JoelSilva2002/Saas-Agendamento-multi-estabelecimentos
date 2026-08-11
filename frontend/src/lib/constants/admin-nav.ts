@@ -11,6 +11,7 @@ import {
   Star,
   Ticket,
   UserCog,
+  UserRound,
   Users,
 } from "lucide-react";
 
@@ -61,6 +62,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
     label: "Configurações",
     items: [
       { title: "Estabelecimento", url: "/admin/configuracoes", icon: Settings },
+      { title: "Minha Conta", url: "/admin/configuracoes/conta", icon: UserRound },
       { title: "Tema", url: "/admin/configuracoes/tema", icon: Palette },
     ],
   },

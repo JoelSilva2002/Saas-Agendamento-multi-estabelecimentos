@@ -11,6 +11,8 @@ import {
 import { LoginUseCase } from '../application/use-cases/login.use-case';
 import { RefreshSessionUseCase } from '../application/use-cases/refresh-session.use-case';
 import { LogoutUseCase } from '../application/use-cases/logout.use-case';
+import { ChangePasswordUseCase } from '../application/use-cases/change-password.use-case';
+import { ChangePasswordRequestDto } from './dto/change-password.request.dto';
 import { LoginRequestDto } from './dto/login.request.dto';
 import { RefreshRequestDto } from './dto/refresh.request.dto';
 import { RegisterClientRequestDto } from './dto/register-client.request.dto';
@@ -33,6 +35,7 @@ export class AuthController {
     private readonly membershipRepository: MembershipRepositoryPort,
     private readonly registerClientUseCase: RegisterClientUseCase,
     private readonly userRepository: UserRepositoryPort,
+    private readonly changePasswordUseCase: ChangePasswordUseCase,
   ) {}
 
   @Public()
@@ -114,5 +117,19 @@ export class AuthController {
       fullUser.update({ themePreference: dto.themePreference }),
     );
     return { id: updated.id, email: updated.email, themePreference: updated.themePreference };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('me/password')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async changePassword(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: ChangePasswordRequestDto,
+  ) {
+    await this.changePasswordUseCase.execute({
+      userId: user.id,
+      currentPassword: dto.currentPassword,
+      newPassword: dto.newPassword,
+    });
   }
 }

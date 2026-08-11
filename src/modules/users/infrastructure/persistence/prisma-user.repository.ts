@@ -52,6 +52,13 @@ export class PrismaUserRepository implements UserRepositoryPort {
     return UserMapper.toDomain(updated);
   }
 
+  async updatePassword(userId: string, passwordHash: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash, updatedAt: new Date() },
+    });
+  }
+
   async findAllByTenant(tenantId: string): Promise<User[]> {
     const records = await this.prisma.user.findMany({
       where: { tenantRoles: { some: { tenantId } } },

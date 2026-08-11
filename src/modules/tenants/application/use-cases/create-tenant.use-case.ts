@@ -16,7 +16,6 @@ export interface CreateTenantInput {
   name: string;
   slug: string;
   document?: string;
-  plan?: string;
   ownerEmail: string;
   ownerFirstName: string;
   ownerLastName: string;
@@ -61,7 +60,6 @@ export class CreateTenantUseCase {
       name: input.name,
       slug: input.slug,
       document: input.document,
-      plan: input.plan,
     });
 
     const temporaryPassword = input.ownerPassword ? undefined : this.generateTemporaryPassword();

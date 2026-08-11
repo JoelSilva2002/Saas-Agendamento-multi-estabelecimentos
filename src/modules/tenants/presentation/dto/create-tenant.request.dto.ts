@@ -1,5 +1,4 @@
-import { IsEmail, IsIn, IsOptional, IsString, Matches, MinLength } from 'class-validator';
-import { TENANT_PLANS } from '../../domain/entities/tenant.entity';
+import { IsEmail, IsOptional, IsString, Matches, MinLength } from 'class-validator';
 
 const SLUG_PATTERN = /^[a-z0-9-]+$/;
 const SLUG_MESSAGE = 'slug deve conter apenas letras minúsculas, números e hífen';
@@ -16,10 +15,6 @@ export class CreateTenantRequestDto {
   @IsOptional()
   @IsString()
   document?: string;
-
-  @IsOptional()
-  @IsIn(TENANT_PLANS)
-  plan?: string;
 
   @IsEmail()
   ownerEmail!: string;
