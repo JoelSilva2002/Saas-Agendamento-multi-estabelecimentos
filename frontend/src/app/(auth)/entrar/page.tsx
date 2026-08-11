@@ -14,13 +14,16 @@ import { Input } from "@/components/ui/input";
 import { ApiError } from "@/lib/api/client";
 import { getMe, login } from "@/lib/auth/api";
 import { clearSession } from "@/lib/auth/clear-session";
-import { hasStaffAccess } from "@/lib/auth/roles";
-import { resolveSessionContext } from "@/lib/auth/resolve-session";
-import { setSessionContext } from "@/lib/auth/session-context";
+import { hasClientAccess } from "@/lib/auth/roles";
 import { setTokens } from "@/lib/auth/token-storage";
 import { loginSchema, type LoginFormValues } from "@/lib/schemas/login-schema";
 
-export default function LoginPage() {
+/**
+ * Client-facing sign in. Kept separate from /login (establishment staff) because the two lead
+ * to different places and have different expectations: a client should never be dropped into
+ * the admin panel, where every request would 403.
+ */
+export default function ClientLoginPage() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | undefined>();
@@ -38,20 +41,17 @@ export default function LoginPage() {
       setTokens(result);
       const me = await getMe();
 
-      // A client account has no admin grants: letting it through would land on a dashboard
-      // where every request 403s. Send them to their own door instead.
-      if (!hasStaffAccess(me)) {
+      // A staff-only account has no client area to show. Rather than leaving them on a page
+      // that would render an empty history, send them where they belong.
+      if (!hasClientAccess(me)) {
         clearSession();
-        setSubmitError("Esta conta é de cliente. Use a página de entrada de clientes.");
+        setSubmitError(
+          "Esta conta é de um estabelecimento. Use o acesso para estabelecimentos.",
+        );
         return;
       }
 
-      if (me.isPlatformAdmin) {
-        router.push("/superadmin/tenants");
-      } else {
-        setSessionContext(await resolveSessionContext(me));
-        router.push("/admin/dashboard");
-      }
+      router.push("/meus-agendamentos");
     } catch (err) {
       setSubmitError(
         err instanceof ApiError ? err.message : "Não foi possível entrar. Tente novamente.",
@@ -64,19 +64,14 @@ export default function LoginPage() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Acesso do estabelecimento</CardTitle>
-        <CardDescription>Entre no painel da sua equipe.</CardDescription>
+        <CardTitle>Entrar</CardTitle>
+        <CardDescription>Acesse seus agendamentos e histórico.</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={form.handleSubmit(handleSubmit)} className="flex flex-col gap-4">
           <Field data-invalid={!!form.formState.errors.email}>
             <FieldLabel htmlFor="email">E-mail</FieldLabel>
-            <Input
-              id="email"
-              type="email"
-              placeholder="voce@estabelecimento.com"
-              {...form.register("email")}
-            />
+            <Input id="email" type="email" placeholder="voce@email.com" {...form.register("email")} />
             <FieldError
               errors={
                 form.formState.errors.email
@@ -108,10 +103,18 @@ export default function LoginPage() {
             {isSubmitting ? "Entrando..." : "Entrar"}
           </Button>
         </form>
+
         <p className="mt-4 text-center text-sm text-muted-foreground">
-          Quer agendar como cliente?{" "}
-          <Link href="/entrar" className="text-primary underline underline-offset-4">
-            Entrar como cliente
+          Ainda não tem conta? Ela é criada na hora do seu primeiro agendamento —{" "}
+          <Link href="/buscar" className="text-primary underline underline-offset-4">
+            encontre um estabelecimento
+          </Link>
+          .
+        </p>
+        <p className="mt-3 border-t pt-3 text-center text-sm text-muted-foreground">
+          É um estabelecimento?{" "}
+          <Link href="/login" className="text-primary underline underline-offset-4">
+            Acesse o painel
           </Link>
         </p>
       </CardContent>

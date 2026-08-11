@@ -119,6 +119,7 @@ export class Establishment {
   private static readonly RESERVED_SLUGS = [
     'buscar',
     'login',
+    'entrar',
     'admin',
     'superadmin',
     'public',

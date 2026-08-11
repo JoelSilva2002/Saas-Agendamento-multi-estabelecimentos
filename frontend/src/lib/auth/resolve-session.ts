@@ -12,12 +12,17 @@ import { listEstablishments } from "@/lib/establishments/api";
 export async function resolveSessionContext(me?: MeResponse): Promise<SessionContext> {
   const resolvedMe = me ?? (await getMe());
 
-  const scopedMembership = resolvedMe.memberships.find((m) => m.establishmentId);
+  // Staff grants first: someone can be an owner at one establishment and a client at another,
+  // and the admin panel must open on the one they actually work at.
+  const staffMemberships = resolvedMe.memberships.filter((m) => m.roleName !== "client");
+  const candidates = staffMemberships.length > 0 ? staffMemberships : resolvedMe.memberships;
+
+  const scopedMembership = candidates.find((m) => m.establishmentId);
   if (scopedMembership?.establishmentId) {
     return { tenantId: scopedMembership.tenantId, establishmentId: scopedMembership.establishmentId };
   }
 
-  const tenantMembership = resolvedMe.memberships[0];
+  const tenantMembership = candidates[0];
   if (!tenantMembership) {
     throw new Error("Usuário sem tenant associado");
   }

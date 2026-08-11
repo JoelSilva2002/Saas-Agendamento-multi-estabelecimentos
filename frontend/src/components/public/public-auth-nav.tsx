@@ -26,7 +26,7 @@ export function PublicAuthNav() {
   if (!signedIn) {
     return (
       <Button asChild>
-        <Link href="/login">Entrar</Link>
+        <Link href="/entrar">Entrar</Link>
       </Button>
     );
   }
