@@ -2,6 +2,7 @@ import { GetAvailableSlotsUseCase } from './get-available-slots.use-case';
 import { ServiceRepositoryPort } from '../../../services/domain/service.repository.port';
 import { EmployeeRepositoryPort } from '../../../employees/domain/employee.repository.port';
 import { BusinessHoursRepositoryPort } from '../../../establishments/domain/business-hours.repository.port';
+import { EstablishmentRepositoryPort } from '../../../establishments/domain/establishment.repository.port';
 import { EmployeeScheduleRepositoryPort } from '../../../employees/domain/employee-schedule.repository.port';
 import { EmployeeTimeOffRepositoryPort } from '../../../employees/domain/employee-time-off.repository.port';
 import { AppointmentRepositoryPort } from '../../domain/appointment.repository.port';
@@ -71,6 +72,11 @@ describe('GetAvailableSlotsUseCase', () => {
       ...overrides?.appointmentRepository,
     } as unknown as AppointmentRepositoryPort;
 
+    // UTC so the wall-clock fixtures below map 1:1 onto the expected instants.
+    const establishmentRepository = {
+      getTimeZone: jest.fn().mockResolvedValue('UTC'),
+    } as unknown as EstablishmentRepositoryPort;
+
     return {
       useCase: new GetAvailableSlotsUseCase(
         serviceRepository,
@@ -79,6 +85,7 @@ describe('GetAvailableSlotsUseCase', () => {
         scheduleRepository,
         timeOffRepository,
         appointmentRepository,
+        establishmentRepository,
       ),
     };
   }

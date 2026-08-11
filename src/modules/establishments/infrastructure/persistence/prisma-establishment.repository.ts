@@ -104,6 +104,19 @@ export class PrismaEstablishmentRepository implements EstablishmentRepositoryPor
     return records.map(EstablishmentMapper.toDomain);
   }
 
+  async findByIdUnscoped(id: string): Promise<Establishment | null> {
+    const found = await this.prisma.establishment.findUnique({ where: { id } });
+    return found ? EstablishmentMapper.toDomain(found) : null;
+  }
+
+  async getTimeZone(establishmentId: string): Promise<string | null> {
+    const found = await this.prisma.establishment.findUnique({
+      where: { id: establishmentId },
+      select: { timezone: true },
+    });
+    return found?.timezone ?? null;
+  }
+
   async listCities(): Promise<string[]> {
     const rows = await this.prisma.establishment.findMany({
       where: { deletedAt: null, tenant: { status: 'active' }, addressCity: { not: null } },

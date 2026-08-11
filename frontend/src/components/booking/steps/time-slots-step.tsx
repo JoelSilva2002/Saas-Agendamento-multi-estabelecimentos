@@ -11,11 +11,13 @@ export function TimeSlotsStep({
   status,
   error,
   onSelect,
+  timeZone,
 }: BookingStepProps & {
   slots: PublicSlot[];
   status: "idle" | "loading" | "success" | "error";
   error?: string;
   onSelect: (slot: PublicSlot) => void;
+  timeZone: string;
 }) {
   const selected = form.watch("slotStartAt");
   const fieldError = form.formState.errors.slotStartAt?.message;
@@ -68,7 +70,7 @@ export function TimeSlotsStep({
                     : "border-border hover:bg-accent/50",
                 )}
               >
-                {formatTime(slot.startAt)}
+                {formatTime(slot.startAt, timeZone)}
               </button>
             );
           })}

@@ -78,6 +78,11 @@ export abstract class AppointmentRepositoryPort {
     filters: ListAppointmentsFilters,
   ): Promise<Appointment[]>;
 
+  /** Every appointment a client has, across every establishment they have ever booked at.
+   * Not establishment-scoped on purpose: it backs the client's own "meus agendamentos" view,
+   * and a client's history is theirs, not any single tenant's. */
+  abstract findAllByClient(clientId: string): Promise<Appointment[]>;
+
   /** Plain field persist for transitions that don't touch scheduling (cancel, no-show) —
    * no lock needed since these only ever narrow occupancy, never introduce a conflict. */
   abstract update(appointment: Appointment): Promise<Appointment>;

@@ -3,7 +3,7 @@ import { CheckCircle2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { formatFullDate, formatTime } from "@/lib/booking/date-utils";
+import { formatFullDateFromInstant, formatTime } from "@/lib/booking/date-utils";
 import type { Appointment } from "@/lib/appointments/types";
 import type { PublicService } from "@/lib/public/types";
 
@@ -11,12 +11,13 @@ export function BookingSuccess({
   establishmentSlug,
   appointment,
   service,
+  timeZone,
 }: {
   establishmentSlug: string;
   appointment: Appointment;
   service?: PublicService;
+  timeZone: string;
 }) {
-  const dateKey = appointment.startAt.slice(0, 10);
 
   return (
     <div className="mx-auto flex w-full max-w-md flex-col items-center gap-4 py-10 text-center">
@@ -34,11 +35,13 @@ export function BookingSuccess({
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Data</span>
-            <span className="font-medium">{formatFullDate(dateKey)}</span>
+            <span className="font-medium">
+              {formatFullDateFromInstant(appointment.startAt, timeZone)}
+            </span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Horário</span>
-            <span className="font-medium">{formatTime(appointment.startAt)}</span>
+            <span className="font-medium">{formatTime(appointment.startAt, timeZone)}</span>
           </div>
           <div className="flex justify-between border-t pt-2">
             <span className="text-muted-foreground">Valor</span>

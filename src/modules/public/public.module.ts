@@ -4,12 +4,23 @@ import { ServicesModule } from '../services/services.module';
 import { AppointmentsModule } from '../appointments/appointments.module';
 import { ReviewsModule } from '../reviews/reviews.module';
 import { UsersModule } from '../users/users.module';
+import { EmployeesModule } from '../employees/employees.module';
 import { PublicController } from './presentation/public.controller';
+import { MyAppointmentsController } from './presentation/my-appointments.controller';
+import { ListMyAppointmentsUseCase } from './application/use-cases/list-my-appointments.use-case';
 
-// Read-only, unauthenticated façade over existing use-cases — it owns no repositories or
-// business rules of its own, only a narrower response shape safe to expose to anyone.
+// The client-facing surface: a read-only façade over existing use-cases for anonymous browsing,
+// plus the signed-in client's own cross-establishment booking history.
 @Module({
-  imports: [EstablishmentsModule, ServicesModule, AppointmentsModule, ReviewsModule, UsersModule],
-  controllers: [PublicController],
+  imports: [
+    EstablishmentsModule,
+    ServicesModule,
+    AppointmentsModule,
+    ReviewsModule,
+    UsersModule,
+    EmployeesModule,
+  ],
+  controllers: [PublicController, MyAppointmentsController],
+  providers: [ListMyAppointmentsUseCase],
 })
 export class PublicModule {}

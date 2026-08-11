@@ -32,8 +32,17 @@ export abstract class EstablishmentRepositoryPort {
   /** Public directory lookups — no tenant scoping by design, these back the unauthenticated
    * client-facing pages. Only non-deleted establishments are ever returned. */
   abstract findBySlug(slug: string): Promise<Establishment | null>;
+
+  /** By id, without a tenant filter. Only for callers that already hold a row pointing at this
+   * establishment (e.g. a client's own appointment) and just need its public details. */
+  abstract findByIdUnscoped(id: string): Promise<Establishment | null>;
   abstract findPublic(filters: PublicEstablishmentFilters): Promise<Establishment[]>;
 
   /** Distinct cities that currently have at least one establishment, for the search filter. */
   abstract listCities(): Promise<string[]>;
+
+  /** The establishment's IANA zone, without loading the whole aggregate. Deliberately not
+   * tenant-scoped: availability is computed from an establishmentId that the caller's guards
+   * have already authorised, and the zone name is not sensitive. */
+  abstract getTimeZone(establishmentId: string): Promise<string | null>;
 }

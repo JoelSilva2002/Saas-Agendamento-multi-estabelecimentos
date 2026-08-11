@@ -6,6 +6,7 @@ import { EmployeeNotFoundError } from '../../../employees/domain/errors/employee
 import { EmployeeScheduleRepositoryPort } from '../../../employees/domain/employee-schedule.repository.port';
 import { EmployeeTimeOffRepositoryPort } from '../../../employees/domain/employee-time-off.repository.port';
 import { BusinessHoursRepositoryPort } from '../../../establishments/domain/business-hours.repository.port';
+import { EstablishmentRepositoryPort } from '../../../establishments/domain/establishment.repository.port';
 import { AppointmentRepositoryPort } from '../../domain/appointment.repository.port';
 import { EmployeeNotEligibleForServiceError } from '../../domain/errors/appointment-errors';
 import {
@@ -39,6 +40,7 @@ export class GetAvailableSlotsUseCase {
     private readonly scheduleRepository: EmployeeScheduleRepositoryPort,
     private readonly timeOffRepository: EmployeeTimeOffRepositoryPort,
     private readonly appointmentRepository: AppointmentRepositoryPort,
+    private readonly establishmentRepository: EstablishmentRepositoryPort,
   ) {}
 
   async execute(input: GetAvailableSlotsInput): Promise<AvailableSlot[]> {
@@ -64,16 +66,18 @@ export class GetAvailableSlotsUseCase {
 
     const weekday = new Date(`${input.date}T00:00:00.000Z`).getUTCDay();
 
-    const [businessHoursDays, scheduleSlots, timeOffEntries, busyRanges] = await Promise.all([
-      this.businessHoursRepository.findAllByEstablishment(input.establishmentId),
-      this.scheduleRepository.findAllByEmployee(input.employeeId),
-      this.timeOffRepository.findAllByEmployee(input.employeeId),
-      this.appointmentRepository.findBusyRangesForEmployeeOnDate(
-        input.employeeId,
-        input.date,
-        input.excludeAppointmentId,
-      ),
-    ]);
+    const [businessHoursDays, scheduleSlots, timeOffEntries, busyRanges, timeZone] =
+      await Promise.all([
+        this.businessHoursRepository.findAllByEstablishment(input.establishmentId),
+        this.scheduleRepository.findAllByEmployee(input.employeeId),
+        this.timeOffRepository.findAllByEmployee(input.employeeId),
+        this.appointmentRepository.findBusyRangesForEmployeeOnDate(
+          input.employeeId,
+          input.date,
+          input.excludeAppointmentId,
+        ),
+        this.establishmentRepository.getTimeZone(input.establishmentId),
+      ]);
 
     const businessHoursDay = businessHoursDays.find((day) => day.weekday === weekday);
     const daySlots = scheduleSlots.filter((slot) => slot.weekday === weekday);
@@ -91,6 +95,7 @@ export class GetAvailableSlotsUseCase {
 
     return AvailabilityCalculator.computeAvailableSlots({
       date: input.date,
+      timeZone: timeZone ?? 'UTC',
       businessHours: businessHoursDay
         ? {
             isClosed: businessHoursDay.isClosed,

@@ -109,6 +109,7 @@ describe('GetDailySummaryUseCase', () => {
         employeeScheduleRepository,
         employeeTimeOffRepository,
         businessHoursRepository,
+        { getTimeZone: jest.fn().mockResolvedValue('UTC') } as never,
       ),
     };
   }

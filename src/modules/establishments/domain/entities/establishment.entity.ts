@@ -116,7 +116,14 @@ export class Establishment {
   /** The slug is the establishment's public URL (/<slug>), so it cannot be a word the app
    * already routes to — a "buscar" establishment would be permanently unreachable, shadowed
    * by the search page. Keep in sync with the static routes under app/(public). */
-  private static readonly RESERVED_SLUGS = ['buscar', 'login', 'admin', 'superadmin', 'public'];
+  private static readonly RESERVED_SLUGS = [
+    'buscar',
+    'login',
+    'admin',
+    'superadmin',
+    'public',
+    'meus-agendamentos',
+  ];
 
   private static assertUsableSlug(slug: string | undefined): void {
     const normalized = slug?.trim().toLowerCase();

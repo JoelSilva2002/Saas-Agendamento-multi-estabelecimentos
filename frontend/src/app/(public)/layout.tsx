@@ -3,6 +3,7 @@ import { CalendarClock } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { PublicAuthNav } from "@/components/public/public-auth-nav";
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -18,9 +19,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
               <Link href="/buscar">Explorar</Link>
             </Button>
             <ThemeToggle />
-            <Button asChild>
-              <Link href="/login">Entrar</Link>
-            </Button>
+            <PublicAuthNav />
           </div>
         </div>
       </header>

@@ -222,12 +222,17 @@ export function BookingWizard({ establishmentSlug }: { establishmentSlug: string
     );
   }
 
+  // Past the guard above, the query is narrowed to "success" — unlike `establishment`, which
+  // was derived before it and stays optional to TypeScript.
+  const timeZone = establishmentQuery.data.timezone;
+
   if (bookingResult) {
     return (
       <BookingSuccess
         establishmentSlug={establishmentSlug}
         appointment={bookingResult}
         service={selectedService}
+        timeZone={timeZone}
       />
     );
   }
@@ -275,6 +280,7 @@ export function BookingWizard({ establishmentSlug }: { establishmentSlug: string
               status={slotsQuery.status}
               error={slotsQuery.status === "error" ? slotsQuery.error : undefined}
               onSelect={handleSelectSlot}
+              timeZone={timeZone}
             />
           )}
           {step === 5 && <IdentificationStep form={form} authError={authError} />}
@@ -284,6 +290,7 @@ export function BookingWizard({ establishmentSlug }: { establishmentSlug: string
               service={selectedService}
               employee={selectedEmployee}
               submitError={submitError}
+              timeZone={timeZone}
             />
           )}
         </div>

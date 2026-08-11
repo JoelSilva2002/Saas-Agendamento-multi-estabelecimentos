@@ -10,6 +10,7 @@ import { EmployeeRepositoryPort } from '../../../employees/domain/employee.repos
 import { EmployeeScheduleRepositoryPort } from '../../../employees/domain/employee-schedule.repository.port';
 import { EmployeeTimeOffRepositoryPort } from '../../../employees/domain/employee-time-off.repository.port';
 import { BusinessHoursRepositoryPort } from '../../../establishments/domain/business-hours.repository.port';
+import { EstablishmentRepositoryPort } from '../../../establishments/domain/establishment.repository.port';
 
 // "Horários vagos" has no service context on a dashboard summary (duration/buffer vary per
 // service), so it's computed as a neutral 30-minute/no-buffer slot count per active employee
@@ -39,6 +40,7 @@ export class GetDailySummaryUseCase {
     private readonly employeeScheduleRepository: EmployeeScheduleRepositoryPort,
     private readonly employeeTimeOffRepository: EmployeeTimeOffRepositoryPort,
     private readonly businessHoursRepository: BusinessHoursRepositoryPort,
+    private readonly establishmentRepository: EstablishmentRepositoryPort,
   ) {}
 
   async execute(establishmentId: string, date: string): Promise<DailySummary> {
@@ -78,10 +80,12 @@ export class GetDailySummaryUseCase {
     const dayStart = new Date(`${date}T00:00:00.000Z`);
     const dayEnd = new Date(`${date}T23:59:59.999Z`);
 
-    const [employees, businessHoursDays] = await Promise.all([
+    const [employees, businessHoursDays, establishmentTimeZone] = await Promise.all([
       this.employeeRepository.findAllByEstablishment(establishmentId),
       this.businessHoursRepository.findAllByEstablishment(establishmentId),
+      this.establishmentRepository.getTimeZone(establishmentId),
     ]);
+    const timeZone = establishmentTimeZone ?? 'UTC';
     const businessHoursDay = businessHoursDays.find((day) => day.weekday === weekday);
     const activeEmployees = employees.filter((employee) => employee.status === 'active');
 
@@ -106,6 +110,7 @@ export class GetDailySummaryUseCase {
 
       const slots = AvailabilityCalculator.computeAvailableSlots({
         date,
+        timeZone,
         businessHours: businessHoursDay
           ? {
               isClosed: businessHoursDay.isClosed,

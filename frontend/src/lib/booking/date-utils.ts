@@ -35,8 +35,30 @@ export function formatMonthShort(date: Date): string {
   return MONTH_FORMATTER.format(date).replace(".", "");
 }
 
-export function formatTime(iso: string): string {
-  return TIME_FORMATTER.format(new Date(iso));
+/**
+ * Times must be shown in the establishment's zone, not the visitor's: a client browsing from
+ * another state has to read the hour the salon will actually expect them, and the slot instants
+ * the API returns were computed against that zone. Falls back to the browser's zone only when
+ * the caller has no establishment context.
+ */
+export function formatTime(iso: string, timeZone?: string): string {
+  if (!timeZone) return TIME_FORMATTER.format(new Date(iso));
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone,
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(iso));
+}
+
+/** Full date of an instant, read in the establishment's zone — near midnight the calendar day
+ * differs between zones, so this cannot reuse the date-key formatter. */
+export function formatFullDateFromInstant(iso: string, timeZone?: string): string {
+  return new Intl.DateTimeFormat("pt-BR", {
+    ...(timeZone ? { timeZone } : {}),
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+  }).format(new Date(iso));
 }
 
 export function formatFullDate(dateKey: string): string {

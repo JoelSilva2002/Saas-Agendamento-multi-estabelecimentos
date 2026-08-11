@@ -29,10 +29,12 @@ export function ConfirmationStep({
   service,
   employee,
   submitError,
+  timeZone,
 }: BookingStepProps & {
   service?: PublicService;
   employee?: PublicEmployee;
   submitError?: string;
+  timeZone: string;
 }) {
   const values = form.getValues();
 
@@ -58,7 +60,7 @@ export function ConfirmationStep({
           <SummaryRow
             icon={Clock}
             label="Horário"
-            value={values.slotStartAt ? formatTime(values.slotStartAt) : "—"}
+            value={values.slotStartAt ? formatTime(values.slotStartAt, timeZone) : "—"}
           />
           {service && (
             <div className="flex items-center justify-between border-t pt-3 text-base font-semibold">

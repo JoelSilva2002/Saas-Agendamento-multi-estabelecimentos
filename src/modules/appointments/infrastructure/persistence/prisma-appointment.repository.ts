@@ -105,6 +105,14 @@ export class PrismaAppointmentRepository implements AppointmentRepositoryPort {
     return records.map(AppointmentMapper.toDomain);
   }
 
+  async findAllByClient(clientId: string): Promise<Appointment[]> {
+    const records = await this.prisma.appointment.findMany({
+      where: { clientId },
+      orderBy: { startAt: 'desc' },
+    });
+    return records.map(AppointmentMapper.toDomain);
+  }
+
   async update(appointment: Appointment): Promise<Appointment> {
     const props = appointment.toPersistenceProps();
     const updated = await this.prisma.appointment.update({
@@ -207,28 +215,38 @@ export class PrismaAppointmentRepository implements AppointmentRepositoryPort {
     const weekday = new Date(`${params.date}T00:00:00.000Z`).getUTCDay();
     const { dayStart, dayEnd } = dayRange(params.date);
 
-    const [businessHours, scheduleSlots, timeOffEntries, busyAppointments] = await Promise.all([
-      tx.establishmentBusinessHours.findFirst({
-        where: { establishmentId: params.establishmentId, weekday },
-      }),
-      tx.employeeScheduleSlot.findMany({ where: { employeeId: params.employeeId, weekday } }),
-      tx.employeeTimeOff.findMany({
-        where: { employeeId: params.employeeId, startAt: { lt: dayEnd }, endAt: { gt: dayStart } },
-      }),
-      tx.appointment.findMany({
-        where: {
-          employeeId: params.employeeId,
-          status: ACTIVE_STATUS_FILTER,
-          startAt: { lt: dayEnd },
-          endAt: { gt: dayStart },
-          ...(excludeAppointmentId ? { id: { not: excludeAppointmentId } } : {}),
-        },
-        include: { service: { select: { bufferBeforeMinutes: true, bufferAfterMinutes: true } } },
-      }),
-    ]);
+    const [establishment, businessHours, scheduleSlots, timeOffEntries, busyAppointments] =
+      await Promise.all([
+        tx.establishment.findUnique({
+          where: { id: params.establishmentId },
+          select: { timezone: true },
+        }),
+        tx.establishmentBusinessHours.findFirst({
+          where: { establishmentId: params.establishmentId, weekday },
+        }),
+        tx.employeeScheduleSlot.findMany({ where: { employeeId: params.employeeId, weekday } }),
+        tx.employeeTimeOff.findMany({
+          where: {
+            employeeId: params.employeeId,
+            startAt: { lt: dayEnd },
+            endAt: { gt: dayStart },
+          },
+        }),
+        tx.appointment.findMany({
+          where: {
+            employeeId: params.employeeId,
+            status: ACTIVE_STATUS_FILTER,
+            startAt: { lt: dayEnd },
+            endAt: { gt: dayStart },
+            ...(excludeAppointmentId ? { id: { not: excludeAppointmentId } } : {}),
+          },
+          include: { service: { select: { bufferBeforeMinutes: true, bufferAfterMinutes: true } } },
+        }),
+      ]);
 
     const context: AvailabilityContext = {
       date: params.date,
+      timeZone: establishment?.timezone ?? 'UTC',
       businessHours: businessHours
         ? {
             isClosed: businessHours.isClosed,

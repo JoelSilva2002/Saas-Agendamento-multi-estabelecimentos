@@ -1,3 +1,5 @@
+import { zonedWallTimeToUtc } from '../../../../shared-kernel/domain/timezone.util';
+
 export interface TimeRange {
   start: Date;
   end: Date;
@@ -17,6 +19,9 @@ export interface DayScheduleSlot {
 export interface AvailabilityContext {
   /** The calendar date this context applies to, "YYYY-MM-DD". */
   date: string;
+  /** IANA zone the establishment operates in. Business hours and schedule slots are bare
+   * wall-clock strings; they only become instants once read against this zone. */
+  timeZone: string;
   businessHours: DayBusinessHours;
   workingSlots: DayScheduleSlot[];
   breakSlots: DayScheduleSlot[];
@@ -42,8 +47,8 @@ export interface AvailableSlot {
 
 const MINUTE_MS = 60_000;
 
-function timeToDate(date: string, time: string): Date {
-  return new Date(`${date}T${time}:00.000Z`);
+function timeToDate(date: string, time: string, timeZone: string): Date {
+  return zonedWallTimeToUtc(date, time, timeZone);
 }
 
 function addMinutes(date: Date, minutes: number): Date {
@@ -80,7 +85,7 @@ export class AvailabilityCalculator {
    * employee's working slots and subtracting breaks, time off and existing busy ranges —
    * the shared basis for both public methods below. */
   private static computeFreeWindows(context: AvailabilityContext): TimeRange[] {
-    const { businessHours, date } = context;
+    const { businessHours, date, timeZone } = context;
     if (businessHours.isClosed || !businessHours.openTime || !businessHours.closeTime) {
       return [];
     }
@@ -89,16 +94,27 @@ export class AvailabilityCalculator {
     }
 
     const businessHoursRange: TimeRange = {
-      start: timeToDate(date, businessHours.openTime),
-      end: timeToDate(date, businessHours.closeTime),
+      start: timeToDate(date, businessHours.openTime, timeZone),
+      end: timeToDate(date, businessHours.closeTime, timeZone),
     };
 
     let windows = context.workingSlots
-      .map((slot) => intersect({ start: timeToDate(date, slot.startTime), end: timeToDate(date, slot.endTime) }, businessHoursRange))
+      .map((slot) =>
+        intersect(
+          {
+            start: timeToDate(date, slot.startTime, timeZone),
+            end: timeToDate(date, slot.endTime, timeZone),
+          },
+          businessHoursRange,
+        ),
+      )
       .filter((window): window is TimeRange => window !== null);
 
     const cuts = [
-      ...context.breakSlots.map((slot) => ({ start: timeToDate(date, slot.startTime), end: timeToDate(date, slot.endTime) })),
+      ...context.breakSlots.map((slot) => ({
+        start: timeToDate(date, slot.startTime, timeZone),
+        end: timeToDate(date, slot.endTime, timeZone),
+      })),
       ...context.timeOffRanges,
       ...context.busyRanges,
     ];

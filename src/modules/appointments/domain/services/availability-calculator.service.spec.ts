@@ -10,6 +10,9 @@ describe('AvailabilityCalculator', () => {
   function baseContext(overrides?: Partial<AvailabilityContext>): AvailabilityContext {
     return {
       date: DATE,
+      // UTC keeps `at()` (which builds instants with a Z suffix) lined up with the wall-clock
+      // strings below; the zone conversion itself is covered by timezone.util.spec.
+      timeZone: 'UTC',
       businessHours: { isClosed: false, openTime: '09:00', closeTime: '18:00' },
       workingSlots: [{ startTime: '09:00', endTime: '18:00' }],
       breakSlots: [],
