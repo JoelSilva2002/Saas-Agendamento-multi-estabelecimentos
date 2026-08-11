@@ -58,6 +58,13 @@ import { AppConfig } from '../../config/configuration';
     PermissionsGuard,
     PlatformAdminGuard,
   ],
-  exports: [PasswordHasherPort, JwtAuthGuard, TenantScopeGuard, PermissionsGuard, PlatformAdminGuard],
+  exports: [
+    PasswordHasherPort,
+    TokenServicePort,
+    JwtAuthGuard,
+    TenantScopeGuard,
+    PermissionsGuard,
+    PlatformAdminGuard,
+  ],
 })
 export class AuthModule {}

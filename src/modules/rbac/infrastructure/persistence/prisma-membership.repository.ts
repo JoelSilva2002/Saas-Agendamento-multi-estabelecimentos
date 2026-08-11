@@ -69,6 +69,14 @@ export class PrismaMembershipRepository implements MembershipRepositoryPort {
     }));
   }
 
+  async findTenantOwner(tenantId: string): Promise<{ userId: string } | null> {
+    const grant = await this.prisma.userTenantRole.findFirst({
+      where: { tenantId, establishmentId: null, role: { name: 'owner' } },
+      select: { userId: true },
+    });
+    return grant ? { userId: grant.userId } : null;
+  }
+
   async replaceGrant(params: CreateMembershipParams): Promise<Membership> {
     return this.prisma.$transaction(async (tx) => {
       await tx.userTenantRole.deleteMany({

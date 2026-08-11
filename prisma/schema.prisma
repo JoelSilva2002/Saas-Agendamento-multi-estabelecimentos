@@ -10,21 +10,47 @@ datasource db {
 enum TenantStatus {
   active
   suspended
+  cancelled
 }
 
 model Tenant {
   id        String       @id @default(uuid())
   name      String
   slug      String       @unique
+  document  String?
+  plan      String       @default("free")
   status    TenantStatus @default(active)
   createdAt DateTime     @default(now()) @map("created_at")
   updatedAt DateTime     @updatedAt @map("updated_at")
 
-  establishments  Establishment[]
-  membershipRoles UserTenantRole[]
-  coupons         Coupon[]
+  establishments        Establishment[]
+  membershipRoles       UserTenantRole[]
+  coupons               Coupon[]
+  impersonationSessions ImpersonationSession[]
 
   @@map("tenants")
+}
+
+// SuperAdmin "support access" audit trail: one row per impersonation session,
+// started when a platform admin borrows a tenant owner's identity (no password
+// involved — see ImpersonateTenantUseCase) and closed when they return to the
+// SuperAdmin panel. endedAt = null means the session was never explicitly
+// closed (the short-lived access token it issued simply expired).
+model ImpersonationSession {
+  id                  String    @id @default(uuid())
+  platformAdminUserId String    @map("platform_admin_user_id")
+  tenantId            String    @map("tenant_id")
+  impersonatedUserId  String    @map("impersonated_user_id")
+  startedAt           DateTime  @default(now()) @map("started_at")
+  endedAt             DateTime? @map("ended_at")
+
+  platformAdmin   User   @relation("ImpersonationSessionsAsAdmin", fields: [platformAdminUserId], references: [id])
+  tenant          Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  impersonatedUser User  @relation("ImpersonationSessionsAsTarget", fields: [impersonatedUserId], references: [id])
+
+  @@index([tenantId])
+  @@index([platformAdminUserId])
+  @@map("impersonation_sessions")
 }
 
 model Establishment {
@@ -131,6 +157,10 @@ model User {
   reviews               Review[]
   couponRedemptions     CouponRedemption[]
   notificationsReceived Notification[]
+
+  // SuperAdmin impersonation audit — see ImpersonationSession.
+  impersonationSessionsAsAdmin  ImpersonationSession[] @relation("ImpersonationSessionsAsAdmin")
+  impersonationSessionsAsTarget ImpersonationSession[] @relation("ImpersonationSessionsAsTarget")
 
   @@map("users")
 }

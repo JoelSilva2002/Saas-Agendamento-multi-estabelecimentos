@@ -1,6 +1,7 @@
 import { Lock, Zap } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -8,22 +9,29 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { MOCK_EMPLOYEES } from "@/lib/mock-data/catalog";
 import { cn } from "@/lib/utils";
 import { AGENDA_VIEW_MODES, type AgendaViewMode } from "./agenda-view-mode";
+
+type ToolbarEmployee = { id: string; displayName: string };
 
 export function AgendaToolbar({
   viewMode,
   onViewModeChange,
+  employees,
   selectedEmployeeId,
   onSelectedEmployeeChange,
+  selectedDate,
+  onDateChange,
   onOpenFitIn,
   onOpenBlock,
 }: {
   viewMode: AgendaViewMode;
   onViewModeChange: (mode: AgendaViewMode) => void;
+  employees: ToolbarEmployee[];
   selectedEmployeeId: string;
   onSelectedEmployeeChange: (employeeId: string) => void;
+  selectedDate: string;
+  onDateChange: (date: string) => void;
   onOpenFitIn: () => void;
   onOpenBlock: () => void;
 }) {
@@ -50,13 +58,21 @@ export function AgendaToolbar({
           ))}
         </div>
 
+        <Input
+          type="date"
+          aria-label="Ir para data"
+          className="w-40"
+          value={selectedDate}
+          onChange={(e) => e.target.value && onDateChange(e.target.value)}
+        />
+
         {viewMode === "professional" && (
           <Select value={selectedEmployeeId} onValueChange={onSelectedEmployeeChange}>
             <SelectTrigger className="w-48">
               <SelectValue placeholder="Selecione um profissional" />
             </SelectTrigger>
             <SelectContent>
-              {MOCK_EMPLOYEES.map((employee) => (
+              {employees.map((employee) => (
                 <SelectItem key={employee.id} value={employee.id}>
                   {employee.displayName}
                 </SelectItem>

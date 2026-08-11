@@ -25,21 +25,23 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toDateKey } from "@/lib/booking/date-utils";
-import { MOCK_EMPLOYEES } from "@/lib/mock-data/catalog";
 import { ALL_STAFF_VALUE, blockSchema, type BlockFormValues } from "@/lib/schemas/block-schema";
 import type { CreateBlockInput } from "@/lib/agenda/types";
 
 export type BlockPrefill = { date?: string; employeeId?: string };
+type BlockEmployee = { id: string; displayName: string };
 
 export function BlockDialog({
   open,
   onOpenChange,
   prefill,
+  employees,
   onSubmit,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   prefill?: BlockPrefill;
+  employees: BlockEmployee[];
   onSubmit: (input: CreateBlockInput) => Promise<void>;
 }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -112,7 +114,7 @@ export function BlockDialog({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={ALL_STAFF_VALUE}>Toda a equipe</SelectItem>
-                    {MOCK_EMPLOYEES.map((employee) => (
+                    {employees.map((employee) => (
                       <SelectItem key={employee.id} value={employee.id}>
                         {employee.displayName}
                       </SelectItem>

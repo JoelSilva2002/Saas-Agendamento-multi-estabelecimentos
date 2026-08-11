@@ -14,18 +14,21 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { formatFullDate, formatTime } from "@/lib/booking/date-utils";
-import { MOCK_EMPLOYEES } from "@/lib/mock-data/catalog";
 import type { AgendaBlock } from "@/lib/agenda/types";
+
+type BlockEmployee = { id: string; displayName: string };
 
 export function BlockDetailsDialog({
   block,
   open,
   onOpenChange,
+  employees,
   onDelete,
 }: {
   block: AgendaBlock | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  employees: BlockEmployee[];
   onDelete: (id: string) => Promise<void>;
 }) {
   const [isDeleting, setIsDeleting] = useState(false);
@@ -33,7 +36,7 @@ export function BlockDetailsDialog({
 
   if (!block) return null;
 
-  const employee = block.employeeId ? MOCK_EMPLOYEES.find((e) => e.id === block.employeeId) : null;
+  const employee = block.employeeId ? employees.find((e) => e.id === block.employeeId) : null;
 
   async function handleDelete() {
     if (!block) return;

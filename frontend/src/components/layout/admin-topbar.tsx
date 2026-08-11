@@ -15,8 +15,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { useLogout } from "@/lib/auth/use-logout";
 
 export function AdminTopbar() {
+  const handleLogout = useLogout();
+
   return (
     <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
       <SidebarTrigger className="-ml-1" />
@@ -51,11 +54,9 @@ export function AdminTopbar() {
             </Link>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem asChild variant="destructive">
-            <Link href="/login">
-              <LogOut />
-              Sair
-            </Link>
+          <DropdownMenuItem variant="destructive" onSelect={handleLogout}>
+            <LogOut />
+            Sair
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

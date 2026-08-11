@@ -32,4 +32,8 @@ export abstract class MembershipRepositoryPort {
   abstract findAllGrantsForUser(
     userId: string,
   ): Promise<Array<{ tenantId: string; establishmentId: string | null; roleName: string }>>;
+
+  /** The tenant-wide 'owner' grant for a tenant, if any — used by SuperAdmin impersonation to
+   * find who to "become" when support-accessing a tenant (see ImpersonateTenantUseCase). */
+  abstract findTenantOwner(tenantId: string): Promise<{ userId: string } | null>;
 }

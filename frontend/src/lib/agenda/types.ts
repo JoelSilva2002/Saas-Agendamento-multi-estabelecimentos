@@ -2,13 +2,9 @@
 // mock-only *Name fields — the real API returns bare clientId/employeeId/
 // serviceId with no embedded names (confirmed gap), so a real integration
 // must join these client-side exactly like the mock does here.
-export type AppointmentStatus =
-  | "pending"
-  | "confirmed"
-  | "in_progress"
-  | "completed"
-  | "cancelled"
-  | "no_show";
+// No "confirmed" — no backend transition ever sets it (appointments are created directly as
+// "pending"; the only forward transitions are check-in/complete/cancel/no-show).
+export type AppointmentStatus = "pending" | "in_progress" | "completed" | "cancelled" | "no_show";
 
 export type AgendaAppointment = {
   id: string;
@@ -54,18 +50,16 @@ export type CreateBlockInput = {
   reason?: string;
 };
 
+export type RescheduleInput = { startAt: string; employeeId?: string };
+
 export type AgendaApi = {
   listAppointments(range: { fromDate: string; toDate: string }): Promise<AgendaAppointment[]>;
   listBlocks(range: { fromDate: string; toDate: string }): Promise<AgendaBlock[]>;
   createFitIn(input: CreateFitInInput): Promise<AgendaAppointment>;
   createBlock(input: CreateBlockInput): Promise<AgendaBlock>;
   deleteBlock(id: string): Promise<void>;
-  // No real `PATCH .../confirm` endpoint exists — `confirmed` is a dead
-  // status value in the current backend (appointments are created directly
-  // as `pending` and the only way out is check-in/cancel/no-show). Kept here
-  // so the UI can offer the action the task asked for; flagged clearly so it
-  // isn't mistaken for a real integration.
-  confirmAppointment(id: string): Promise<AgendaAppointment>;
   markNoShow(id: string): Promise<AgendaAppointment>;
+  completeAppointment(id: string): Promise<AgendaAppointment>;
+  rescheduleAppointment(id: string, input: RescheduleInput): Promise<AgendaAppointment>;
   cancelAppointment(id: string, reason: string): Promise<AgendaAppointment>;
 };

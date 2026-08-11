@@ -9,7 +9,7 @@ const ACCESS_TOKEN_COOKIE = "accessToken";
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (pathname.startsWith("/admin")) {
+  if (pathname.startsWith("/admin") || pathname.startsWith("/superadmin")) {
     const hasSession = request.cookies.has(ACCESS_TOKEN_COOKIE);
     if (!hasSession) {
       const loginUrl = new URL("/login", request.url);
@@ -22,5 +22,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*"],
+  matcher: ["/admin/:path*", "/superadmin/:path*"],
 };

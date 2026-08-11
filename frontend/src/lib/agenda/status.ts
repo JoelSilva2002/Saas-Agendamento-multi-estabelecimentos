@@ -2,7 +2,6 @@ import type { AppointmentStatus } from "./types";
 
 export const STATUS_LABELS: Record<AppointmentStatus, string> = {
   pending: "Pendente",
-  confirmed: "Confirmado",
   in_progress: "Em atendimento",
   completed: "Concluído",
   cancelled: "Cancelado",
@@ -14,7 +13,6 @@ export const STATUS_BADGE_VARIANT: Record<
   "default" | "secondary" | "destructive" | "outline"
 > = {
   pending: "secondary",
-  confirmed: "default",
   in_progress: "default",
   completed: "outline",
   cancelled: "destructive",

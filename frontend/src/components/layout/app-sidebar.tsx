@@ -18,9 +18,11 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import { ADMIN_NAV_GROUPS } from "@/lib/constants/admin-nav";
+import { useLogout } from "@/lib/auth/use-logout";
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const handleLogout = useLogout();
 
   return (
     <Sidebar collapsible="icon">
@@ -71,11 +73,9 @@ export function AppSidebar() {
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild tooltip="Sair">
-              <Link href="/login">
-                <LogOut />
-                <span>Sair</span>
-              </Link>
+            <SidebarMenuButton tooltip="Sair" onClick={handleLogout}>
+              <LogOut />
+              <span>Sair</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

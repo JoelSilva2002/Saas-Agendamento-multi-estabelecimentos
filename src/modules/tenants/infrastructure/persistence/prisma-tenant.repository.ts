@@ -1,9 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../../shared-kernel/infrastructure/prisma.service';
-import { Tenant } from '../../domain/entities/tenant.entity';
+import { Tenant, TenantStatus } from '../../domain/entities/tenant.entity';
 import {
   CreateTenantWithOwnerParams,
+  FindPaginatedTenantsParams,
+  PaginatedTenants,
   TenantRepositoryPort,
   TenantWithOwner,
 } from '../../domain/tenant.repository.port';
@@ -68,6 +70,45 @@ export class PrismaTenantRepository implements TenantRepositoryPort {
     return records.map((record) => this.toDomain(record));
   }
 
+  async findPaginated(params: FindPaginatedTenantsParams): Promise<PaginatedTenants> {
+    const where: Prisma.TenantWhereInput = {
+      ...(params.status ? { status: params.status } : {}),
+      ...(params.search
+        ? {
+            OR: [
+              { name: { contains: params.search, mode: 'insensitive' } },
+              { slug: { contains: params.search, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
+    };
+
+    const [records, total] = await this.prisma.$transaction([
+      this.prisma.tenant.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (params.page - 1) * params.pageSize,
+        take: params.pageSize,
+      }),
+      this.prisma.tenant.count({ where }),
+    ]);
+
+    return { items: records.map((record) => this.toDomain(record)), total };
+  }
+
+  async update(tenant: Tenant): Promise<Tenant> {
+    const updated = await this.prisma.tenant.update({
+      where: { id: tenant.id },
+      data: {
+        name: tenant.name,
+        document: tenant.document,
+        plan: tenant.plan,
+        status: tenant.status,
+      },
+    });
+    return this.toDomain(updated);
+  }
+
   async existsWithSlug(slug: string): Promise<boolean> {
     const count = await this.prisma.tenant.count({ where: { slug } });
     return count > 0;
@@ -77,6 +118,8 @@ export class PrismaTenantRepository implements TenantRepositoryPort {
     id: string;
     name: string;
     slug: string;
+    document: string | null;
+    plan: string;
     status: string;
     createdAt: Date;
     updatedAt: Date;
@@ -85,7 +128,9 @@ export class PrismaTenantRepository implements TenantRepositoryPort {
       id: record.id,
       name: record.name,
       slug: record.slug,
-      status: record.status as 'active' | 'suspended',
+      document: record.document,
+      plan: record.plan,
+      status: record.status as TenantStatus,
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
     });

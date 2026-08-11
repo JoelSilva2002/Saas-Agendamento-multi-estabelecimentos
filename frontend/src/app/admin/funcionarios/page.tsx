@@ -1,13 +1,5 @@
-import { UserCog } from "lucide-react";
-
-import { PagePlaceholder } from "@/components/layout/page-placeholder";
+import { FuncionariosScreen } from "@/components/funcionarios/funcionarios-screen";
 
 export default function FuncionariosPage() {
-  return (
-    <PagePlaceholder
-      title="Funcionários"
-      description="Equipe, horários de trabalho e produtividade"
-      icon={UserCog}
-    />
-  );
+  return <FuncionariosScreen />;
 }

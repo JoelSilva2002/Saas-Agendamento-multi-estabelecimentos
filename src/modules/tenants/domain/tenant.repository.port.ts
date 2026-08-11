@@ -1,4 +1,4 @@
-import { Tenant } from './entities/tenant.entity';
+import { Tenant, TenantStatus } from './entities/tenant.entity';
 
 export interface CreateTenantWithOwnerParams {
   tenantId: string;
@@ -17,6 +17,18 @@ export interface TenantWithOwner {
   ownerUserId: string;
 }
 
+export interface FindPaginatedTenantsParams {
+  page: number;
+  pageSize: number;
+  search?: string;
+  status?: TenantStatus;
+}
+
+export interface PaginatedTenants {
+  items: Tenant[];
+  total: number;
+}
+
 export abstract class TenantRepositoryPort {
   /** Creates the tenant, its first (owner) user, and the owner's tenant-wide membership
    * grant atomically. This is the one legitimate place a repository spans three aggregates
@@ -26,5 +38,7 @@ export abstract class TenantRepositoryPort {
 
   abstract findById(id: string): Promise<Tenant | null>;
   abstract findAll(): Promise<Tenant[]>;
+  abstract findPaginated(params: FindPaginatedTenantsParams): Promise<PaginatedTenants>;
+  abstract update(tenant: Tenant): Promise<Tenant>;
   abstract existsWithSlug(slug: string): Promise<boolean>;
 }

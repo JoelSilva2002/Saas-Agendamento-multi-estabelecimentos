@@ -9,21 +9,34 @@ import type {
   EventInput,
 } from "@fullcalendar/react";
 import { useRef, useState } from "react";
+import { toast } from "sonner";
 
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toDateKey, toTimeKey } from "@/lib/booking/date-utils";
-import { getEmployeeEventColors, getStatusClassNames } from "@/lib/agenda/colors";
-import { createMockAgendaApi } from "@/lib/agenda/mock-api";
+import {
+  buildEmployeeColorMap,
+  buildEmployeeLegend,
+  getAppointmentEventColors,
+  getStatusClassNames,
+} from "@/lib/agenda/colors";
+import { createRealAgendaApi } from "@/lib/agenda/real-api";
 import type { AgendaAppointment, AgendaBlock } from "@/lib/agenda/types";
+import { getSessionContext } from "@/lib/auth/session-context";
+import { listEligibleEmployees, listEmployees } from "@/lib/employees/api";
+import { listServices } from "@/lib/services/api";
+import { listTenantUsers } from "@/lib/users/api";
 import { useAsync } from "@/hooks/use-async";
+import { useMediaQuery } from "@/hooks/use-media-query";
 
 import { AgendaCalendar } from "./agenda-calendar";
 import { AgendaLegend } from "./agenda-legend";
+import { AgendaMobileList } from "./agenda-mobile-list";
 import { AgendaToolbar } from "./agenda-toolbar";
 import { AppointmentDetailsDialog } from "./appointment-details-dialog";
 import { BlockDetailsDialog } from "./block-details-dialog";
 import { BlockDialog, type BlockPrefill } from "./block-dialog";
 import { FitInDialog, type FitInPrefill } from "./fit-in-dialog";
-import { MOCK_EMPLOYEES } from "@/lib/mock-data/catalog";
 import type { AgendaViewMode } from "./agenda-view-mode";
 
 type EventExtendedProps =
@@ -31,11 +44,16 @@ type EventExtendedProps =
   | { kind: "block"; block: AgendaBlock };
 
 export function AgendaScreen() {
-  const [api] = useState(() => createMockAgendaApi());
+  const [session] = useState(() => getSessionContext());
+  const [api] = useState(() =>
+    session ? createRealAgendaApi(session.tenantId, session.establishmentId) : null,
+  );
   const calendarRef = useRef<CalendarRef>(null);
+  const isMobile = useMediaQuery("(max-width: 640px)");
 
   const [viewMode, setViewMode] = useState<AgendaViewMode>("week");
-  const [selectedEmployeeId, setSelectedEmployeeId] = useState(MOCK_EMPLOYEES[0]?.id ?? "");
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
+  const [selectedDate, setSelectedDate] = useState(() => toDateKey(new Date()));
   const [range, setRange] = useState<{ fromDate: string; toDate: string } | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -51,17 +69,41 @@ export function AgendaScreen() {
   const [blockDetails, setBlockDetails] = useState<AgendaBlock | null>(null);
   const [blockDetailsOpen, setBlockDetailsOpen] = useState(false);
 
+  const catalogQuery = useAsync(
+    async () => {
+      if (!session) throw new Error("Sessão não encontrada");
+      const [employees, services, users] = await Promise.all([
+        listEmployees(session.tenantId, session.establishmentId),
+        listServices(session.tenantId, session.establishmentId),
+        listTenantUsers(session.tenantId),
+      ]);
+      const userNames = new Map(users.map((u) => [u.id, `${u.firstName} ${u.lastName}`.trim()]));
+      const employeesWithNames = employees.map((employee) => ({
+        ...employee,
+        displayName: userNames.get(employee.userId) ?? employee.jobTitle,
+      }));
+      const clients = users.map((u) => ({ id: u.id, displayName: `${u.firstName} ${u.lastName}`.trim() }));
+      return { employees: employeesWithNames, services, clients };
+    },
+    [session?.tenantId, session?.establishmentId],
+    Boolean(session),
+  );
+
+  const employees = catalogQuery.status === "success" ? catalogQuery.data.employees : [];
+  const services = catalogQuery.status === "success" ? catalogQuery.data.services : [];
+  const clients = catalogQuery.status === "success" ? catalogQuery.data.clients : [];
+  const colorMap = buildEmployeeColorMap(employees);
+  const legend = buildEmployeeLegend(colorMap, employees);
+  const effectiveSelectedEmployeeId = selectedEmployeeId || employees[0]?.id || "";
+
   const dataQuery = useAsync(
     async () => {
-      if (!range) return { appointments: [] as AgendaAppointment[], blocks: [] as AgendaBlock[] };
-      const [appointments, blocks] = await Promise.all([
-        api.listAppointments(range),
-        api.listBlocks(range),
-      ]);
+      if (!api || !range) return { appointments: [] as AgendaAppointment[], blocks: [] as AgendaBlock[] };
+      const [appointments, blocks] = await Promise.all([api.listAppointments(range), api.listBlocks(range)]);
       return { appointments, blocks };
     },
     [api, range?.fromDate, range?.toDate, refreshKey],
-    Boolean(range),
+    Boolean(api && range),
   );
 
   function refresh() {
@@ -79,6 +121,11 @@ export function AgendaScreen() {
     calendarApi.changeView(
       mode === "day" ? "timeGridDay" : mode === "month" ? "dayGridMonth" : "timeGridWeek",
     );
+  }
+
+  function handleGoToDate(dateKey: string) {
+    setSelectedDate(dateKey);
+    calendarRef.current?.getApi()?.gotoDate(dateKey);
   }
 
   function handleEventClick(info: EventClickInfo) {
@@ -107,11 +154,11 @@ export function AgendaScreen() {
 
   const filteredAppointments =
     viewMode === "professional"
-      ? appointments.filter((a) => a.employeeId === selectedEmployeeId)
+      ? appointments.filter((a) => a.employeeId === effectiveSelectedEmployeeId)
       : appointments;
   const filteredBlocks =
     viewMode === "professional"
-      ? blocks.filter((b) => b.employeeId === null || b.employeeId === selectedEmployeeId)
+      ? blocks.filter((b) => b.employeeId === null || b.employeeId === effectiveSelectedEmployeeId)
       : blocks;
 
   const events: EventInput[] = [
@@ -120,7 +167,7 @@ export function AgendaScreen() {
       title: `${appointment.isFitIn ? "⚡ " : ""}${appointment.clientName} · ${appointment.serviceName}`,
       start: appointment.startAt,
       end: appointment.endAt,
-      ...getEmployeeEventColors(appointment.employeeId),
+      ...getAppointmentEventColors(colorMap, appointment.employeeId, appointment.status),
       classNames: getStatusClassNames(appointment.status),
       extendedProps: { kind: "appointment", appointment } satisfies EventExtendedProps,
     })),
@@ -136,6 +183,18 @@ export function AgendaScreen() {
     })),
   ];
 
+  if (!session || !api) {
+    return (
+      <Alert variant="destructive">
+        <AlertDescription>
+          Não foi possível determinar o estabelecimento atual. Saia e entre novamente.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  const isInitialLoading = catalogQuery.status === "loading" || catalogQuery.status === "idle";
+
   return (
     <div className="flex flex-col gap-4">
       <div>
@@ -148,8 +207,11 @@ export function AgendaScreen() {
       <AgendaToolbar
         viewMode={viewMode}
         onViewModeChange={handleViewModeChange}
-        selectedEmployeeId={selectedEmployeeId}
+        employees={employees}
+        selectedEmployeeId={effectiveSelectedEmployeeId}
         onSelectedEmployeeChange={setSelectedEmployeeId}
+        selectedDate={selectedDate}
+        onDateChange={handleGoToDate}
         onOpenFitIn={() => {
           setFitInPrefill(undefined);
           setFitInOpen(true);
@@ -160,32 +222,60 @@ export function AgendaScreen() {
         }}
       />
 
-      <AgendaLegend />
+      <AgendaLegend legend={legend} />
 
-      <AgendaCalendar
-        calendarRef={calendarRef}
-        viewMode={viewMode}
-        events={events}
-        onDatesSet={handleDatesSet}
-        onEventClick={handleEventClick}
-        onDateClick={handleDateClick}
-        onSelect={handleSelect}
-      />
+      {isInitialLoading ? (
+        <Skeleton className="h-[600px] w-full rounded-lg" />
+      ) : isMobile ? (
+        <AgendaMobileList
+          date={selectedDate}
+          onDateChange={handleGoToDate}
+          appointments={filteredAppointments}
+          blocks={filteredBlocks}
+          colorMap={colorMap}
+          onAppointmentClick={(appointment) => {
+            setDetailsAppointment(appointment);
+            setDetailsOpen(true);
+          }}
+          onBlockClick={(block) => {
+            setBlockDetails(block);
+            setBlockDetailsOpen(true);
+          }}
+        />
+      ) : (
+        <AgendaCalendar
+          calendarRef={calendarRef}
+          viewMode={viewMode}
+          events={events}
+          onDatesSet={handleDatesSet}
+          onEventClick={handleEventClick}
+          onDateClick={handleDateClick}
+          onSelect={handleSelect}
+        />
+      )}
 
       <AppointmentDetailsDialog
         appointment={detailsAppointment}
         open={detailsOpen}
         onOpenChange={setDetailsOpen}
-        onConfirm={async (id) => {
-          await api.confirmAppointment(id);
+        onComplete={async (id) => {
+          await api.completeAppointment(id);
+          toast.success("Agendamento concluído");
+          refresh();
+        }}
+        onReschedule={async (id, input) => {
+          await api.rescheduleAppointment(id, input);
+          toast.success("Agendamento reagendado");
           refresh();
         }}
         onNoShow={async (id) => {
           await api.markNoShow(id);
+          toast.success("Falta registrada");
           refresh();
         }}
         onCancel={async (id, reason) => {
           await api.cancelAppointment(id, reason);
+          toast.success("Agendamento cancelado");
           refresh();
         }}
       />
@@ -194,8 +284,16 @@ export function AgendaScreen() {
         open={fitInOpen}
         onOpenChange={setFitInOpen}
         prefill={fitInPrefill}
+        clients={clients}
+        services={services}
+        employees={employees}
+        getEligibleEmployeeIds={async (serviceId) => {
+          const eligible = await listEligibleEmployees(session.tenantId, session.establishmentId, serviceId);
+          return eligible.map((e) => e.id);
+        }}
         onSubmit={async (input) => {
           await api.createFitIn(input);
+          toast.success("Encaixe criado");
           refresh();
         }}
       />
@@ -204,8 +302,10 @@ export function AgendaScreen() {
         open={blockOpen}
         onOpenChange={setBlockOpen}
         prefill={blockPrefill}
+        employees={employees}
         onSubmit={async (input) => {
           await api.createBlock(input);
+          toast.success("Horário bloqueado");
           refresh();
         }}
       />
@@ -214,8 +314,10 @@ export function AgendaScreen() {
         block={blockDetails}
         open={blockDetailsOpen}
         onOpenChange={setBlockDetailsOpen}
+        employees={employees}
         onDelete={async (id) => {
           await api.deleteBlock(id);
+          toast.success("Bloqueio removido");
           refresh();
         }}
       />

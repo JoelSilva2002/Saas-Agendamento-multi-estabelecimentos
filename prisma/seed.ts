@@ -177,9 +177,13 @@ async function main() {
     }
   }
 
-  // platform_admin has no tenant-scoped permissions today (it bypasses TenantScopeGuard
-  // entirely via users.isPlatformAdmin), but the role row is seeded so future tenant-scoped
-  // platform-admin actions have somewhere to attach to.
+  // platform_admin has no tenant-scoped permissions today. Platform-admin authority is
+  // enforced purely via users.isPlatformAdmin + PlatformAdminGuard on platform-only routes
+  // (/tenants) — it does NOT bypass TenantScopeGuard, which has no such exemption. A platform
+  // admin who wants to act inside a tenant does so via impersonation (issuing themselves a
+  // token for that tenant's real owner user — see ImpersonateTenantUseCase), not via this
+  // role. The row is seeded so future tenant-scoped platform-admin permissions have somewhere
+  // to attach to.
   void platformAdminRole;
 
   const adminEmail = process.env.SEED_PLATFORM_ADMIN_EMAIL ?? 'admin@agendasaas.local';

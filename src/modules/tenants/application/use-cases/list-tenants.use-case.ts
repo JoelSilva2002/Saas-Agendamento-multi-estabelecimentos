@@ -1,12 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { TenantRepositoryPort } from '../../domain/tenant.repository.port';
-import { Tenant } from '../../domain/entities/tenant.entity';
+import { FindPaginatedTenantsParams, PaginatedTenants, TenantRepositoryPort } from '../../domain/tenant.repository.port';
 
 @Injectable()
 export class ListTenantsUseCase {
   constructor(private readonly tenantRepository: TenantRepositoryPort) {}
 
-  async execute(): Promise<Tenant[]> {
-    return this.tenantRepository.findAll();
+  async execute(params: FindPaginatedTenantsParams): Promise<PaginatedTenants> {
+    return this.tenantRepository.findPaginated(params);
   }
 }

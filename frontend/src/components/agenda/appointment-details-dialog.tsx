@@ -15,11 +15,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { toDateKey, toTimeKey } from "@/lib/booking/date-utils";
 import { formatFullDate, formatTime } from "@/lib/booking/date-utils";
 import { formatCentsToBRL } from "@/lib/booking/pricing";
 import { STATUS_BADGE_VARIANT, STATUS_LABELS, TERMINAL_STATUSES } from "@/lib/agenda/status";
-import type { AgendaAppointment } from "@/lib/agenda/types";
+import type { AgendaAppointment, RescheduleInput } from "@/lib/agenda/types";
 
 function InfoRow({
   icon: Icon,
@@ -40,20 +42,28 @@ export function AppointmentDetailsDialog({
   appointment,
   open,
   onOpenChange,
-  onConfirm,
+  onComplete,
+  onReschedule,
   onNoShow,
   onCancel,
 }: {
   appointment: AgendaAppointment | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirm: (id: string) => Promise<void>;
+  onComplete: (id: string) => Promise<void>;
+  onReschedule: (id: string, input: RescheduleInput) => Promise<void>;
   onNoShow: (id: string) => Promise<void>;
   onCancel: (id: string, reason: string) => Promise<void>;
 }) {
   const [isCancelling, setIsCancelling] = useState(false);
   const [reason, setReason] = useState("");
   const [reasonError, setReasonError] = useState<string | undefined>();
+
+  const [isRescheduling, setIsRescheduling] = useState(false);
+  const [rescheduleDate, setRescheduleDate] = useState("");
+  const [rescheduleTime, setRescheduleTime] = useState("");
+  const [rescheduleError, setRescheduleError] = useState<string | undefined>();
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionError, setActionError] = useState<string | undefined>();
 
@@ -65,6 +75,10 @@ export function AppointmentDetailsDialog({
       setIsCancelling(false);
       setReason("");
       setReasonError(undefined);
+      setIsRescheduling(false);
+      setRescheduleDate("");
+      setRescheduleTime("");
+      setRescheduleError(undefined);
       setActionError(undefined);
     }
   }, [open, appointment?.id]);
@@ -94,6 +108,21 @@ export function AppointmentDetailsDialog({
       return;
     }
     void run(() => onCancel(currentAppointment.id, reason));
+  }
+
+  function startRescheduling() {
+    setRescheduleDate(toDateKey(new Date(currentAppointment.startAt)));
+    setRescheduleTime(toTimeKey(new Date(currentAppointment.startAt)));
+    setIsRescheduling(true);
+  }
+
+  function submitReschedule() {
+    if (!rescheduleDate || !rescheduleTime) {
+      setRescheduleError("Informe data e horário");
+      return;
+    }
+    const startAt = new Date(`${rescheduleDate}T${rescheduleTime}:00`).toISOString();
+    void run(() => onReschedule(currentAppointment.id, { startAt }));
   }
 
   return (
@@ -153,6 +182,36 @@ export function AppointmentDetailsDialog({
           </Field>
         )}
 
+        {isRescheduling && (
+          <div className="grid grid-cols-2 gap-3">
+            <Field data-invalid={!!rescheduleError}>
+              <FieldLabel htmlFor="reschedule-date">Nova data</FieldLabel>
+              <Input
+                id="reschedule-date"
+                type="date"
+                value={rescheduleDate}
+                onChange={(e) => {
+                  setRescheduleDate(e.target.value);
+                  if (rescheduleError) setRescheduleError(undefined);
+                }}
+              />
+            </Field>
+            <Field data-invalid={!!rescheduleError}>
+              <FieldLabel htmlFor="reschedule-time">Novo horário</FieldLabel>
+              <Input
+                id="reschedule-time"
+                type="time"
+                value={rescheduleTime}
+                onChange={(e) => {
+                  setRescheduleTime(e.target.value);
+                  if (rescheduleError) setRescheduleError(undefined);
+                }}
+              />
+              <FieldError errors={rescheduleError ? [{ message: rescheduleError }] : undefined} />
+            </Field>
+          </div>
+        )}
+
         {actionError && (
           <Alert variant="destructive">
             <AlertDescription>{actionError}</AlertDescription>
@@ -160,18 +219,21 @@ export function AppointmentDetailsDialog({
         )}
 
         <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-between">
-          {isTerminal || isCancelling ? null : (
+          {isTerminal || isCancelling || isRescheduling ? null : (
             <div className="flex flex-wrap gap-2">
-              {appointment.status === "pending" && (
+              {appointment.status === "in_progress" && (
                 <Button
                   type="button"
                   variant="outline"
                   disabled={isSubmitting}
-                  onClick={() => void run(() => onConfirm(appointment.id))}
+                  onClick={() => void run(() => onComplete(appointment.id))}
                 >
-                  Confirmar
+                  Concluir
                 </Button>
               )}
+              <Button type="button" variant="outline" disabled={isSubmitting} onClick={startRescheduling}>
+                Reagendar
+              </Button>
               <Button
                 type="button"
                 variant="outline"
@@ -199,6 +261,15 @@ export function AppointmentDetailsDialog({
                   onClick={submitCancel}
                 >
                   Confirmar cancelamento
+                </Button>
+              </>
+            ) : isRescheduling ? (
+              <>
+                <Button type="button" variant="ghost" onClick={() => setIsRescheduling(false)}>
+                  Voltar
+                </Button>
+                <Button type="button" disabled={isSubmitting} onClick={submitReschedule}>
+                  Confirmar reagendamento
                 </Button>
               </>
             ) : (

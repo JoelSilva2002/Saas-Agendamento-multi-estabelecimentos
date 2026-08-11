@@ -34,32 +34,40 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toDateKey } from "@/lib/booking/date-utils";
-import {
-  ELIGIBLE_EMPLOYEES_BY_SERVICE,
-  MOCK_CLIENTS,
-  MOCK_EMPLOYEES,
-  MOCK_SERVICES,
-} from "@/lib/mock-data/catalog";
 import { cn } from "@/lib/utils";
 import { fitInSchema, type FitInFormValues } from "@/lib/schemas/fit-in-schema";
 import type { CreateFitInInput } from "@/lib/agenda/types";
 
 export type FitInPrefill = { date?: string; time?: string; employeeId?: string };
+type FitInClient = { id: string; displayName: string };
+type FitInService = { id: string; name: string };
+type FitInEmployee = { id: string; displayName: string };
 
 export function FitInDialog({
   open,
   onOpenChange,
   prefill,
+  clients,
+  services,
+  employees,
+  getEligibleEmployeeIds,
   onSubmit,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   prefill?: FitInPrefill;
+  clients: FitInClient[];
+  services: FitInService[];
+  employees: FitInEmployee[];
+  // Real eligibility is per-service (GET .../services/:id/employees) — there's no static
+  // map to look up synchronously like the old mock had.
+  getEligibleEmployeeIds: (serviceId: string) => Promise<string[]>;
   onSubmit: (input: CreateFitInInput) => Promise<void>;
 }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | undefined>();
   const [clientPickerOpen, setClientPickerOpen] = useState(false);
+  const [eligibleEmployeeIds, setEligibleEmployeeIds] = useState<string[] | null>(null);
 
   const form = useForm<FitInFormValues>({
     resolver: zodResolver(fitInSchema),
@@ -76,13 +84,30 @@ export function FitInDialog({
         time: prefill?.time ?? "",
       });
       setSubmitError(undefined);
+      setEligibleEmployeeIds(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const serviceId = form.watch("serviceId");
-  const eligibleEmployeeIds = ELIGIBLE_EMPLOYEES_BY_SERVICE[serviceId] ?? [];
-  const eligibleEmployees = MOCK_EMPLOYEES.filter((e) => eligibleEmployeeIds.includes(e.id));
+
+  useEffect(() => {
+    if (!serviceId) {
+      setEligibleEmployeeIds(null);
+      return;
+    }
+    let cancelled = false;
+    getEligibleEmployeeIds(serviceId).then((ids) => {
+      if (!cancelled) setEligibleEmployeeIds(ids);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [serviceId, getEligibleEmployeeIds]);
+
+  const eligibleEmployees = eligibleEmployeeIds
+    ? employees.filter((e) => eligibleEmployeeIds.includes(e.id))
+    : [];
 
   async function handleSubmit(values: FitInFormValues) {
     setIsSubmitting(true);
@@ -103,7 +128,7 @@ export function FitInDialog({
     }
   }
 
-  const selectedClient = MOCK_CLIENTS.find((c) => c.id === form.watch("clientId"));
+  const selectedClient = clients.find((c) => c.id === form.watch("clientId"));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -115,10 +140,7 @@ export function FitInDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form
-          onSubmit={form.handleSubmit(handleSubmit)}
-          className="flex flex-col gap-4"
-        >
+        <form onSubmit={form.handleSubmit(handleSubmit)} className="flex flex-col gap-4">
           <Field data-invalid={!!form.formState.errors.clientId}>
             <FieldLabel>Cliente</FieldLabel>
             <Popover open={clientPickerOpen} onOpenChange={setClientPickerOpen}>
@@ -140,7 +162,7 @@ export function FitInDialog({
                   <CommandList>
                     <CommandEmpty>Nenhum cliente encontrado.</CommandEmpty>
                     <CommandGroup>
-                      {MOCK_CLIENTS.map((client) => (
+                      {clients.map((client) => (
                         <CommandItem
                           key={client.id}
                           value={client.displayName}
@@ -156,9 +178,6 @@ export function FitInDialog({
                             )}
                           />
                           {client.displayName}
-                          <span className="ml-auto text-xs text-muted-foreground">
-                            {client.phone}
-                          </span>
                         </CommandItem>
                       ))}
                     </CommandGroup>
@@ -192,7 +211,7 @@ export function FitInDialog({
                     <SelectValue placeholder="Selecione um serviço" />
                   </SelectTrigger>
                   <SelectContent>
-                    {MOCK_SERVICES.map((service) => (
+                    {services.map((service) => (
                       <SelectItem key={service.id} value={service.id}>
                         {service.name}
                       </SelectItem>

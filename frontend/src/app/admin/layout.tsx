@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 
 import { AdminTopbar } from "@/components/layout/admin-topbar";
 import { AppSidebar } from "@/components/layout/app-sidebar";
+import { ImpersonationBanner } from "@/components/layout/impersonation-banner";
 import { EstablishmentThemeProvider } from "@/components/providers/establishment-theme-provider";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 
@@ -17,6 +18,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
       <SidebarProvider defaultOpen={sidebarOpen}>
         <AppSidebar />
         <SidebarInset>
+          <ImpersonationBanner />
           <AdminTopbar />
           <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">{children}</div>
         </SidebarInset>

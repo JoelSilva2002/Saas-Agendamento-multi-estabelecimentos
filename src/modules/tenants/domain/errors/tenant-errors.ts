@@ -11,3 +11,15 @@ export class DuplicateTenantSlugError extends ConflictError {
     super(`Já existe um tenant com o slug '${slug}'`);
   }
 }
+
+export class TenantOwnerNotFoundError extends NotFoundError {
+  constructor(tenantId: string) {
+    super(`Tenant '${tenantId}' não possui um usuário owner`);
+  }
+}
+
+export class TenantNotActiveError extends ConflictError {
+  constructor(tenantId: string) {
+    super(`Tenant '${tenantId}' não está ativo`);
+  }
+}
