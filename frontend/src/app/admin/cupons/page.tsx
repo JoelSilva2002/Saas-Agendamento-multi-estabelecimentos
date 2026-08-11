@@ -1,13 +1,5 @@
-import { Ticket } from "lucide-react";
-
-import { PagePlaceholder } from "@/components/layout/page-placeholder";
+import { CuponsScreen } from "@/components/cupons/cupons-screen";
 
 export default function CuponsPage() {
-  return (
-    <PagePlaceholder
-      title="Cupons"
-      description="Cupons de desconto por percentual ou valor fixo"
-      icon={Ticket}
-    />
-  );
+  return <CuponsScreen />;
 }

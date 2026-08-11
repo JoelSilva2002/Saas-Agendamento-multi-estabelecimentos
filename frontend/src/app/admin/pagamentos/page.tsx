@@ -1,13 +1,5 @@
-import { CreditCard } from "lucide-react";
-
-import { PagePlaceholder } from "@/components/layout/page-placeholder";
+import { PagamentosScreen } from "@/components/pagamentos/pagamentos-screen";
 
 export default function PagamentosPage() {
-  return (
-    <PagePlaceholder
-      title="Pagamentos"
-      description="Cobranças, status de pagamento e aplicação de cupons"
-      icon={CreditCard}
-    />
-  );
+  return <PagamentosScreen />;
 }
