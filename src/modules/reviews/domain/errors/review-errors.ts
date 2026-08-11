@@ -1,6 +1,7 @@
 import {
   ConflictError,
   ForbiddenError,
+  NotFoundError,
   ValidationError,
 } from '../../../../shared-kernel/domain/domain-error';
 
@@ -20,5 +21,11 @@ export class ReviewAccessDeniedError extends ForbiddenError {
 export class AppointmentAlreadyReviewedError extends ConflictError {
   constructor() {
     super('Este agendamento já foi avaliado');
+  }
+}
+
+export class ReviewNotFoundError extends NotFoundError {
+  constructor(id: string) {
+    super(`Avaliação '${id}' não encontrada`);
   }
 }

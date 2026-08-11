@@ -72,6 +72,16 @@ export class ClientProfile {
     return this.props.notes;
   }
 
+  update(changes: { phone?: string | null; birthDate?: Date | null; notes?: string | null }): ClientProfile {
+    return new ClientProfile({
+      ...this.props,
+      phone: changes.phone !== undefined ? changes.phone : this.props.phone,
+      birthDate: changes.birthDate !== undefined ? changes.birthDate : this.props.birthDate,
+      notes: changes.notes !== undefined ? changes.notes : this.props.notes,
+      updatedAt: new Date(),
+    });
+  }
+
   toPersistenceProps(): ClientProfileProps {
     return { ...this.props };
   }

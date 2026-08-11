@@ -1,10 +1,21 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { Auth } from '../../auth/presentation/decorators/auth.decorator';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../../auth/domain/request-context.types';
 import { CreateReviewUseCase } from '../application/use-cases/create-review.use-case';
 import { ListReviewsUseCase } from '../application/use-cases/list-reviews.use-case';
 import { GetReviewSummaryUseCase } from '../application/use-cases/get-review-summary.use-case';
+import { DeleteReviewUseCase } from '../application/use-cases/delete-review.use-case';
 import { CreateReviewRequestDto } from './dto/create-review.request.dto';
 import { Review } from '../domain/entities/review.entity';
 
@@ -14,6 +25,7 @@ export class ReviewsController {
     private readonly createReview: CreateReviewUseCase,
     private readonly listReviews: ListReviewsUseCase,
     private readonly getReviewSummary: GetReviewSummaryUseCase,
+    private readonly deleteReview: DeleteReviewUseCase,
   ) {}
 
   @Post()
@@ -54,6 +66,16 @@ export class ReviewsController {
   ) {
     const reviews = await this.listReviews.execute(establishmentId, { employeeId });
     return reviews.map((review) => this.toResponse(review));
+  }
+
+  @Delete(':reviewId')
+  @Auth('review:moderate')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async remove(
+    @Param('establishmentId') establishmentId: string,
+    @Param('reviewId') reviewId: string,
+  ) {
+    await this.deleteReview.execute({ establishmentId, reviewId });
   }
 
   private toResponse(review: Review) {

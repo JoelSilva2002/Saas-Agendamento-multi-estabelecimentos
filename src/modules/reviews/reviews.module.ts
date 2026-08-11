@@ -5,6 +5,7 @@ import { PrismaReviewRepository } from './infrastructure/persistence/prisma-revi
 import { CreateReviewUseCase } from './application/use-cases/create-review.use-case';
 import { ListReviewsUseCase } from './application/use-cases/list-reviews.use-case';
 import { GetReviewSummaryUseCase } from './application/use-cases/get-review-summary.use-case';
+import { DeleteReviewUseCase } from './application/use-cases/delete-review.use-case';
 import { ReviewsController } from './presentation/reviews.controller';
 
 @Module({
@@ -15,6 +16,7 @@ import { ReviewsController } from './presentation/reviews.controller';
     CreateReviewUseCase,
     ListReviewsUseCase,
     GetReviewSummaryUseCase,
+    DeleteReviewUseCase,
   ],
 })
 export class ReviewsModule {}

@@ -27,4 +27,26 @@ export class PrismaClientProfileRepository implements ClientProfileRepositoryPor
       where: { establishmentId, createdAt: { gte: from, lt: to } },
     });
   }
+
+  async findById(id: string, establishmentId: string): Promise<ClientProfile | null> {
+    const found = await this.prisma.clientProfile.findFirst({ where: { id, establishmentId } });
+    return found ? ClientProfile.fromPersistence(found) : null;
+  }
+
+  async findMany(establishmentId: string): Promise<ClientProfile[]> {
+    const records = await this.prisma.clientProfile.findMany({
+      where: { establishmentId },
+      orderBy: { createdAt: 'desc' },
+    });
+    return records.map(ClientProfile.fromPersistence);
+  }
+
+  async update(profile: ClientProfile): Promise<ClientProfile> {
+    const props = profile.toPersistenceProps();
+    const updated = await this.prisma.clientProfile.update({
+      where: { id: props.id },
+      data: { phone: props.phone, birthDate: props.birthDate, notes: props.notes },
+    });
+    return ClientProfile.fromPersistence(updated);
+  }
 }

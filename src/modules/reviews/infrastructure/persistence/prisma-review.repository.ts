@@ -47,6 +47,11 @@ export class PrismaReviewRepository implements ReviewRepositoryPort {
     return found ? ReviewMapper.toDomain(found) : null;
   }
 
+  async findById(reviewId: string, establishmentId: string): Promise<Review | null> {
+    const found = await this.prisma.review.findFirst({ where: { id: reviewId, establishmentId } });
+    return found ? ReviewMapper.toDomain(found) : null;
+  }
+
   async findMany(establishmentId: string, filters: ListReviewsFilters): Promise<Review[]> {
     const records = await this.prisma.review.findMany({
       where: { establishmentId, employeeId: filters.employeeId },
@@ -62,5 +67,9 @@ export class PrismaReviewRepository implements ReviewRepositoryPort {
       _count: { rating: true },
     });
     return { average: result._avg.rating ?? 0, count: result._count.rating };
+  }
+
+  async delete(reviewId: string): Promise<void> {
+    await this.prisma.review.delete({ where: { id: reviewId } });
   }
 }
