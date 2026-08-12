@@ -1,5 +1,7 @@
 import { apiFetch } from "@/lib/api/client";
 import type {
+  CancellationRate,
+  ClientMetric,
   DateRangeParams,
   EmployeeMetric,
   HourMetric,
@@ -44,6 +46,26 @@ export function getEmployeeProductivity(
 ): Promise<EmployeeMetric[]> {
   return apiFetch<EmployeeMetric[]>(
     `${basePath(tenantId, establishmentId)}/employee-productivity${dateRangeQuery(params)}`,
+  );
+}
+
+export function getTopClients(
+  tenantId: string,
+  establishmentId: string,
+  params: DateRangeParams,
+): Promise<ClientMetric[]> {
+  return apiFetch<ClientMetric[]>(
+    `${basePath(tenantId, establishmentId)}/top-clients${dateRangeQuery(params)}`,
+  );
+}
+
+export function getCancellationRate(
+  tenantId: string,
+  establishmentId: string,
+  params: DateRangeParams,
+): Promise<CancellationRate> {
+  return apiFetch<CancellationRate>(
+    `${basePath(tenantId, establishmentId)}/cancellation-rate${dateRangeQuery(params)}`,
   );
 }
 

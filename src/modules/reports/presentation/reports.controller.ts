@@ -4,6 +4,8 @@ import { GetMonthlyRevenueUseCase } from '../application/use-cases/get-monthly-r
 import { GetTopServicesUseCase } from '../application/use-cases/get-top-services.use-case';
 import { GetEmployeeProductivityUseCase } from '../application/use-cases/get-employee-productivity.use-case';
 import { GetPeakHoursUseCase } from '../application/use-cases/get-peak-hours.use-case';
+import { GetTopClientsUseCase } from '../application/use-cases/get-top-clients.use-case';
+import { GetCancellationRateUseCase } from '../application/use-cases/get-cancellation-rate.use-case';
 import { MonthlyRevenueReportRequestDto } from './dto/monthly-revenue-report.request.dto';
 import { DateRangeReportRequestDto } from './dto/date-range-report.request.dto';
 
@@ -14,6 +16,8 @@ export class ReportsController {
     private readonly getTopServices: GetTopServicesUseCase,
     private readonly getEmployeeProductivity: GetEmployeeProductivityUseCase,
     private readonly getPeakHours: GetPeakHoursUseCase,
+    private readonly getTopClients: GetTopClientsUseCase,
+    private readonly getCancellationRate: GetCancellationRateUseCase,
   ) {}
 
   @Get('revenue')
@@ -45,6 +49,32 @@ export class ReportsController {
     @Query() query: DateRangeReportRequestDto,
   ) {
     return this.getEmployeeProductivity.execute({
+      establishmentId,
+      fromDate: query.fromDate,
+      toDate: query.toDate,
+    });
+  }
+
+  @Get('top-clients')
+  @Auth('report:read')
+  async topClients(
+    @Param('establishmentId') establishmentId: string,
+    @Query() query: DateRangeReportRequestDto,
+  ) {
+    return this.getTopClients.execute({
+      establishmentId,
+      fromDate: query.fromDate,
+      toDate: query.toDate,
+    });
+  }
+
+  @Get('cancellation-rate')
+  @Auth('report:read')
+  async cancellationRate(
+    @Param('establishmentId') establishmentId: string,
+    @Query() query: DateRangeReportRequestDto,
+  ) {
+    return this.getCancellationRate.execute({
       establishmentId,
       fromDate: query.fromDate,
       toDate: query.toDate,

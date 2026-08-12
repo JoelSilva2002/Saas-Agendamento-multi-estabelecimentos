@@ -20,6 +20,24 @@ export type HourMetric = {
   count: number;
 };
 
+export type ClientMetric = {
+  clientId: string;
+  count: number;
+  revenueCents: number;
+  lastVisitAt: string;
+};
+
+export type CancellationRate = {
+  total: number;
+  cancelled: number;
+  noShow: number;
+  completed: number;
+  /** 0–1. */
+  cancellationRate: number;
+  /** 0–1. */
+  noShowRate: number;
+};
+
 export type DateRangeParams = {
   fromDate?: string;
   toDate?: string;

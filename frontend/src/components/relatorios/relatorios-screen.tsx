@@ -15,12 +15,21 @@ import { getSessionContext } from "@/lib/auth/session-context";
 import { listEmployees } from "@/lib/employees/api";
 import type { Employee } from "@/lib/employees/types";
 import {
+  getCancellationRate,
   getEmployeeProductivity,
   getMonthlyRevenue,
   getPeakHours,
+  getTopClients,
   getTopServices,
 } from "@/lib/reports/api";
-import type { EmployeeMetric, HourMetric, MonthlyRevenue, ServiceMetric } from "@/lib/reports/types";
+import type {
+  CancellationRate,
+  ClientMetric,
+  EmployeeMetric,
+  HourMetric,
+  MonthlyRevenue,
+  ServiceMetric,
+} from "@/lib/reports/types";
 import { listServices } from "@/lib/services/api";
 import type { CatalogService } from "@/lib/services/types";
 import { listTenantUsers } from "@/lib/users/api";
@@ -58,6 +67,8 @@ export function RelatoriosScreen() {
   const [topServices, setTopServices] = useState<ServiceMetric[]>([]);
   const [productivity, setProductivity] = useState<EmployeeMetric[]>([]);
   const [peakHours, setPeakHours] = useState<HourMetric[]>([]);
+  const [topClients, setTopClients] = useState<ClientMetric[]>([]);
+  const [cancellation, setCancellation] = useState<CancellationRate | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -72,8 +83,10 @@ export function RelatoriosScreen() {
       getTopServices(session.tenantId, session.establishmentId, { fromDate, toDate }),
       getEmployeeProductivity(session.tenantId, session.establishmentId, { fromDate, toDate }),
       getPeakHours(session.tenantId, session.establishmentId, { fromDate, toDate }),
+      getTopClients(session.tenantId, session.establishmentId, { fromDate, toDate }),
+      getCancellationRate(session.tenantId, session.establishmentId, { fromDate, toDate }),
     ])
-      .then(([servicesResult, employeesResult, usersResult, revenueResult, topServicesResult, productivityResult, peakHoursResult]) => {
+      .then(([servicesResult, employeesResult, usersResult, revenueResult, topServicesResult, productivityResult, peakHoursResult, topClientsResult, cancellationResult]) => {
         if (cancelled) return;
         setServices(servicesResult);
         setEmployees(employeesResult);
@@ -82,6 +95,8 @@ export function RelatoriosScreen() {
         setTopServices(topServicesResult);
         setProductivity(productivityResult);
         setPeakHours(peakHoursResult);
+        setTopClients(topClientsResult);
+        setCancellation(cancellationResult);
       })
       .catch((err) => {
         if (cancelled) return;
@@ -116,7 +131,8 @@ export function RelatoriosScreen() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Relatórios</h1>
         <p className="text-sm text-muted-foreground">
-          Faturamento mensal, serviços mais vendidos, produtividade e horários de pico.
+          Faturamento, serviços mais vendidos, produtividade, clientes, cancelamentos e
+          horários de pico.
         </p>
       </div>
 
@@ -260,6 +276,102 @@ export function RelatoriosScreen() {
               )}
             </TableBody>
           </Table>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Clientes que mais agendam</CardTitle>
+          <CardDescription>Considera apenas atendimentos concluídos no período.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Cliente</TableHead>
+                <TableHead>Atendimentos</TableHead>
+                <TableHead>Valor gasto</TableHead>
+                <TableHead>Última visita</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                  <TableRow key={i}>
+                    {Array.from({ length: 4 }).map((__, j) => (
+                      <TableCell key={j}>
+                        <Skeleton className="h-5 w-full" />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : topClients.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
+                    Nenhum atendimento concluído no período.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                topClients.map((metric) => (
+                  <TableRow key={metric.clientId}>
+                    <TableCell className="font-medium">
+                      {userNames.get(metric.clientId) ?? "—"}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{metric.count}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {formatCurrency(metric.revenueCents)}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {new Date(metric.lastVisitAt).toLocaleDateString("pt-BR")}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Taxa de cancelamento</CardTitle>
+          <CardDescription>
+            Sobre todos os agendamentos do período, concluídos ou não.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <Skeleton className="h-16 w-full" />
+          ) : !cancellation || cancellation.total === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhum agendamento no período.</p>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-4">
+              <div>
+                <p className="text-2xl font-semibold">
+                  {Math.round(cancellation.cancellationRate * 100)}%
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Cancelados ({cancellation.cancelled})
+                </p>
+              </div>
+              <div>
+                <p className="text-2xl font-semibold">
+                  {Math.round(cancellation.noShowRate * 100)}%
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Não compareceu ({cancellation.noShow})
+                </p>
+              </div>
+              <div>
+                <p className="text-2xl font-semibold">{cancellation.completed}</p>
+                <p className="text-sm text-muted-foreground">Concluídos</p>
+              </div>
+              <div>
+                <p className="text-2xl font-semibold">{cancellation.total}</p>
+                <p className="text-sm text-muted-foreground">Total no período</p>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
