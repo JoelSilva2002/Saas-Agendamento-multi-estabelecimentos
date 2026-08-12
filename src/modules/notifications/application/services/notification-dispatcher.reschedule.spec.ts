@@ -44,11 +44,16 @@ describe('NotificationDispatcherService — reschedule', () => {
       { send: jest.fn() } as never,
       {
         findByIdUnscoped: jest.fn().mockResolvedValue({
+          name: 'Studio Beleza',
+          address: {},
           timezone: 'America/Sao_Paulo',
           notifyEmailEnabled: true,
           notifyWhatsappEnabled: true,
         }),
       } as never,
+      { findById: jest.fn().mockResolvedValue(null) } as never,
+      { findById: jest.fn().mockResolvedValue(null) } as never,
+      { get: jest.fn().mockReturnValue('http://localhost:3001') } as never,
     );
 
     return { service, stored };
@@ -60,6 +65,8 @@ describe('NotificationDispatcherService — reschedule', () => {
       establishmentId: 'establishment-1',
       appointmentId: APPOINTMENT_ID,
       clientId: CLIENT_ID,
+      employeeId: 'employee-1',
+      serviceId: 'service-1',
       startAt,
       previousStartAt: new Date('2026-08-20T12:00:00.000Z'),
     });
@@ -92,6 +99,8 @@ describe('NotificationDispatcherService — reschedule', () => {
       establishmentId: 'establishment-1',
       appointmentId: APPOINTMENT_ID,
       clientId: CLIENT_ID,
+      employeeId: 'employee-1',
+      serviceId: 'service-1',
       startAt: new Date('2026-08-21T12:00:00.000Z'),
     };
     await service.dispatch(confirmation);

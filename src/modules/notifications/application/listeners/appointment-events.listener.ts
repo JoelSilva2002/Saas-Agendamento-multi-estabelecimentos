@@ -25,6 +25,8 @@ export class AppointmentEventsListener {
       establishmentId: event.establishmentId,
       appointmentId: event.appointmentId,
       clientId: event.clientId,
+      employeeId: event.employeeId,
+      serviceId: event.serviceId,
       startAt: event.startAt,
     });
   }
@@ -36,6 +38,8 @@ export class AppointmentEventsListener {
       establishmentId: event.establishmentId,
       appointmentId: event.appointmentId,
       clientId: event.clientId,
+      employeeId: event.employeeId,
+      serviceId: event.serviceId,
       startAt: event.startAt,
       cancellationReason: event.cancellationReason,
     });
@@ -48,6 +52,8 @@ export class AppointmentEventsListener {
       establishmentId: event.establishmentId,
       appointmentId: event.appointmentId,
       clientId: event.clientId,
+      employeeId: event.employeeId,
+      serviceId: event.serviceId,
       startAt: event.startAt,
       previousStartAt: event.previousStartAt,
     });

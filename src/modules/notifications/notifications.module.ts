@@ -3,12 +3,14 @@ import { AppointmentsModule } from '../appointments/appointments.module';
 import { ClientsModule } from '../clients/clients.module';
 import { UsersModule } from '../users/users.module';
 import { EstablishmentsModule } from '../establishments/establishments.module';
+import { ServicesModule } from '../services/services.module';
+import { EmployeesModule } from '../employees/employees.module';
 import { NotificationRepositoryPort } from './domain/notification.repository.port';
 import { WhatsAppNotifierPort } from './domain/whatsapp-notifier.port';
 import { EmailNotifierPort } from './domain/email-notifier.port';
 import { PrismaNotificationRepository } from './infrastructure/persistence/prisma-notification.repository';
 import { HttpWhatsAppNotifier } from './infrastructure/channels/http-whatsapp-notifier';
-import { HttpEmailNotifier } from './infrastructure/channels/http-email-notifier';
+import { ResendEmailNotifier } from './infrastructure/channels/resend-email-notifier';
 import { RemindersCron } from './infrastructure/reminders.cron';
 import { RetryNotificationsCron } from './infrastructure/retry-notifications.cron';
 import { NotificationDispatcherService } from './application/services/notification-dispatcher.service';
@@ -23,12 +25,20 @@ import { NotificationsController } from './presentation/notifications.controller
   // notifications-listing use case can read appointment data — AppointmentsModule itself
   // never imports NotificationsModule; it only emits events (see appointment-events.ts),
   // which is what keeps this from becoming a circular dependency.
-  imports: [AppointmentsModule, ClientsModule, UsersModule, EstablishmentsModule],
+  imports: [
+    AppointmentsModule,
+    ClientsModule,
+    UsersModule,
+    EstablishmentsModule,
+    // Read-only: the rich HTML e-mail includes the service and professional names.
+    ServicesModule,
+    EmployeesModule,
+  ],
   controllers: [NotificationsController],
   providers: [
     { provide: NotificationRepositoryPort, useClass: PrismaNotificationRepository },
     { provide: WhatsAppNotifierPort, useClass: HttpWhatsAppNotifier },
-    { provide: EmailNotifierPort, useClass: HttpEmailNotifier },
+    { provide: EmailNotifierPort, useClass: ResendEmailNotifier },
     NotificationDispatcherService,
     AppointmentEventsListener,
     DispatchDueRemindersUseCase,

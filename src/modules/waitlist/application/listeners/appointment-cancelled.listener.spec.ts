@@ -94,7 +94,7 @@ describe('AppointmentCancelledListener', () => {
     expect(emailNotifier.send).toHaveBeenCalledWith(
       'client@test.local',
       expect.any(String),
-      expect.any(String),
+      expect.objectContaining({ html: expect.any(String), text: expect.any(String) }),
     );
     expect(waitlistEntryRepository.update).toHaveBeenCalledWith(
       expect.objectContaining({ toPersistenceProps: expect.any(Function) }),

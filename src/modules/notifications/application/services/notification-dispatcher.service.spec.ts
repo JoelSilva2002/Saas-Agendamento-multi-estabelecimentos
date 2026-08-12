@@ -22,6 +22,8 @@ describe('NotificationDispatcherService', () => {
     establishmentId: 'establishment-1',
     appointmentId: 'appointment-1',
     clientId: 'client-1',
+    employeeId: 'employee-1',
+    serviceId: 'service-1',
     startAt: new Date('2026-03-10T14:00:00.000Z'),
   };
 
@@ -32,6 +34,8 @@ describe('NotificationDispatcherService', () => {
     whatsAppNotifier?: Partial<WhatsAppNotifierPort>;
     emailNotifier?: Partial<EmailNotifierPort>;
     establishmentRepository?: { findByIdUnscoped: jest.Mock };
+    serviceRepository?: { findById: jest.Mock };
+    employeeRepository?: { findById: jest.Mock };
   }) {
     const notificationRepository: NotificationRepositoryPort = {
       findExisting: jest.fn().mockResolvedValue(null),
@@ -62,6 +66,16 @@ describe('NotificationDispatcherService', () => {
       ...overrides?.emailNotifier,
     } as unknown as EmailNotifierPort;
 
+    const serviceRepository = overrides?.serviceRepository ?? {
+      findById: jest.fn().mockResolvedValue({ name: 'Corte de cabelo' }),
+    };
+    const employeeRepository = overrides?.employeeRepository ?? {
+      findById: jest.fn().mockResolvedValue({ userId: 'employee-user-1' }),
+    };
+    const configService = {
+      get: jest.fn().mockReturnValue('http://localhost:3001'),
+    };
+
     return {
       service: new NotificationDispatcherService(
         notificationRepository,
@@ -71,11 +85,16 @@ describe('NotificationDispatcherService', () => {
         emailNotifier,
         (overrides?.establishmentRepository ?? {
           findByIdUnscoped: jest.fn().mockResolvedValue({
+            name: 'Studio Beleza',
+            address: {},
             timezone: 'America/Sao_Paulo',
             notifyEmailEnabled: true,
             notifyWhatsappEnabled: true,
           }),
         }) as never,
+        serviceRepository as never,
+        employeeRepository as never,
+        configService as never,
       ),
       notificationRepository,
       userRepository,
@@ -92,9 +111,30 @@ describe('NotificationDispatcherService', () => {
     expect(emailNotifier.send).toHaveBeenCalledWith(
       'client@test.local',
       expect.any(String),
-      expect.any(String),
+      expect.objectContaining({ html: expect.any(String), text: expect.any(String) }),
     );
     expect(notificationRepository.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('includes the service and professional names in the e-mail HTML', async () => {
+    const employeeUser = User.create({
+      id: 'employee-user-1',
+      email: 'joao@test.local',
+      passwordHash: 'hash',
+      firstName: 'João',
+      lastName: 'Barbeiro',
+    });
+    const { service, emailNotifier } = build({
+      userRepository: {
+        findById: jest.fn((id: string) => Promise.resolve(id === 'employee-user-1' ? employeeUser : client)),
+      },
+    });
+
+    await service.dispatch(input);
+
+    const [, , content] = (emailNotifier.send as jest.Mock).mock.calls[0];
+    expect(content.html).toContain('Corte de cabelo');
+    expect(content.html).toContain('João Barbeiro');
   });
 
   it('also dispatches by whatsapp when the client has a phone on file', async () => {

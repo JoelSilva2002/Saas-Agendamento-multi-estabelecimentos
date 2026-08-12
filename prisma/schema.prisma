@@ -564,6 +564,10 @@ model Notification {
   status          NotificationStatus  @default(pending)
   dedupeKey       String              @default("") @map("dedupe_key")
   message         String
+  // Fully-rendered HTML body for the `email` channel, captured at dispatch time so a later
+  // retry resends byte-for-byte the same content instead of re-deriving it (and possibly
+  // drifting if the underlying service/employee data changed in between). Null for whatsapp.
+  htmlBody        String?             @map("html_body") @db.Text
   errorMessage    String?             @map("error_message")
   // Number of send attempts made so far (incremented on every real call to the channel
   // adapter, success or failure). The retry sweep stops once this reaches MAX_ATTEMPTS in

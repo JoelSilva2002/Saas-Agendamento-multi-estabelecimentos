@@ -71,7 +71,10 @@ export class AppointmentCancelledListener {
         entry.establishmentId,
       );
 
-      await this.emailNotifier.send(client.email, 'Vaga disponível na lista de espera', MESSAGE);
+      await this.emailNotifier.send(client.email, 'Vaga disponível na lista de espera', {
+        html: `<p>${MESSAGE}</p>`,
+        text: MESSAGE,
+      });
       if (clientProfile?.phone) {
         await this.whatsAppNotifier.send(clientProfile.phone, MESSAGE);
       }

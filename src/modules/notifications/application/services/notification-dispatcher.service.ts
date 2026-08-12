@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto';
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { NotificationRepositoryPort } from '../../domain/notification.repository.port';
 import { WhatsAppNotifierPort } from '../../domain/whatsapp-notifier.port';
 import { EmailNotifierPort } from '../../domain/email-notifier.port';
@@ -12,13 +13,20 @@ import {
 import { UserRepositoryPort } from '../../../users/domain/user.repository.port';
 import { ClientProfileRepositoryPort } from '../../../clients/domain/client-profile.repository.port';
 import { EstablishmentRepositoryPort } from '../../../establishments/domain/establishment.repository.port';
+import { Establishment } from '../../../establishments/domain/entities/establishment.entity';
+import { ServiceRepositoryPort } from '../../../services/domain/service.repository.port';
+import { EmployeeRepositoryPort } from '../../../employees/domain/employee.repository.port';
 import { toE164BR } from '../../../../shared-kernel/domain/phone.util';
+import { AppConfig } from '../../../../config/configuration';
+import { buildNotificationEmail } from './notification-email.template';
 
 export interface DispatchNotificationInput {
   type: NotificationType;
   establishmentId: string;
   appointmentId: string;
   clientId: string;
+  employeeId: string;
+  serviceId: string;
   startAt: Date;
   /** Required (and only used) for `cancellation`. */
   cancellationReason?: string;
@@ -75,6 +83,9 @@ export class NotificationDispatcherService {
     private readonly whatsAppNotifier: WhatsAppNotifierPort,
     private readonly emailNotifier: EmailNotifierPort,
     private readonly establishmentRepository: EstablishmentRepositoryPort,
+    private readonly serviceRepository: ServiceRepositoryPort,
+    private readonly employeeRepository: EmployeeRepositoryPort,
+    private readonly configService: ConfigService<AppConfig, true>,
   ) {}
 
   async dispatch(input: DispatchNotificationInput): Promise<void> {
@@ -106,7 +117,8 @@ export class NotificationDispatcherService {
       const message = this.buildMessage(input, establishment.timezone);
 
       if (establishment.notifyEmailEnabled) {
-        await this.dispatchChannel(input, 'email', client.email, message);
+        const html = await this.buildEmailHtml(input, establishment, message);
+        await this.dispatchChannel(input, 'email', client.email, message, html);
       }
       if (clientProfile?.phone && establishment.notifyWhatsappEnabled) {
         await this.dispatchChannel(input, 'whatsapp', clientProfile.phone, message);
@@ -139,6 +151,37 @@ export class NotificationDispatcherService {
     await this.attemptSend(notification, to);
   }
 
+  /** Resolves service/employee names and renders the branded HTML e-mail. Only called when
+   * the email channel is actually enabled — a whatsapp-only establishment never pays for
+   * these two extra lookups. */
+  private async buildEmailHtml(
+    input: DispatchNotificationInput,
+    establishment: Establishment,
+    message: string,
+  ): Promise<string> {
+    const [service, employee] = await Promise.all([
+      this.serviceRepository.findById(input.serviceId, input.establishmentId),
+      this.employeeRepository.findById(input.employeeId, input.establishmentId),
+    ]);
+
+    let employeeName: string | null = null;
+    if (employee) {
+      const employeeUser = await this.userRepository.findById(employee.userId);
+      employeeName = employeeUser ? `${employeeUser.firstName} ${employeeUser.lastName}` : null;
+    }
+
+    const frontendUrl = this.configService.get('frontendUrl', { infer: true });
+    const { html } = buildNotificationEmail({
+      establishmentName: establishment.name,
+      establishmentAddress: establishment.address,
+      serviceName: service?.name ?? null,
+      employeeName,
+      message,
+      manageUrl: `${frontendUrl}/meus-agendamentos`,
+    });
+    return html;
+  }
+
   private async resolveRecipientAddress(notification: Notification): Promise<string | null> {
     const client = await this.userRepository.findById(notification.recipientUserId);
     if (!client) {
@@ -159,6 +202,7 @@ export class NotificationDispatcherService {
     channel: NotificationChannel,
     to: string,
     message: string,
+    htmlBody?: string,
   ): Promise<void> {
     let resolvedTo = to;
     if (channel === 'whatsapp') {
@@ -193,6 +237,7 @@ export class NotificationDispatcherService {
       channel,
       type: input.type,
       message,
+      htmlBody,
       dedupeKey,
     });
     notification = await this.notificationRepository.create(notification);
@@ -205,7 +250,13 @@ export class NotificationDispatcherService {
       if (notification.channel === 'whatsapp') {
         await this.whatsAppNotifier.send(to, notification.message);
       } else {
-        await this.emailNotifier.send(to, SUBJECTS[notification.type], notification.message);
+        // htmlBody is only ever null for pre-existing rows created before this field existed
+        // — fall back to a plain wrap so a retry on one of those doesn't crash.
+        const html = notification.htmlBody ?? `<p>${notification.message}</p>`;
+        await this.emailNotifier.send(to, SUBJECTS[notification.type], {
+          html,
+          text: notification.message,
+        });
       }
       await this.notificationRepository.update(notification.markSent());
     } catch (error) {

@@ -26,6 +26,9 @@ export interface NotificationProps {
    * `reschedule`, which legitimately fires again each time the appointment moves. */
   dedupeKey: string;
   message: string;
+  /** Fully-rendered HTML body for the `email` channel, captured at creation so a retry
+   * resends exactly what was decided at dispatch time. Null for `whatsapp`. */
+  htmlBody: string | null;
   errorMessage: string | null;
   /** Number of real send attempts made so far (incremented on every call to the channel
    * adapter, success or failure). */
@@ -46,6 +49,8 @@ export interface CreateNotificationProps {
   channel: NotificationChannel;
   type: NotificationType;
   message: string;
+  /** Only meaningful for `channel: 'email'`. */
+  htmlBody?: string | null;
   /** Defaults to '' — the one-shot behaviour every existing type relies on. */
   dedupeKey?: string;
 }
@@ -69,6 +74,7 @@ export class Notification {
       status: 'pending',
       dedupeKey: props.dedupeKey ?? '',
       message: props.message,
+      htmlBody: props.htmlBody ?? null,
       errorMessage: null,
       attempts: 0,
       nextAttemptAt: null,
@@ -112,6 +118,10 @@ export class Notification {
 
   get message(): string {
     return this.props.message;
+  }
+
+  get htmlBody(): string | null {
+    return this.props.htmlBody;
   }
 
   get errorMessage(): string | null {

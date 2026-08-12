@@ -52,6 +52,8 @@ export class DispatchDueRemindersUseCase {
           establishmentId: appointment.establishmentId,
           appointmentId: appointment.id,
           clientId: appointment.clientId,
+          employeeId: appointment.employeeId,
+          serviceId: appointment.serviceId,
           startAt: appointment.startAt,
         });
       }

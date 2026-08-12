@@ -92,6 +92,10 @@ describe('NotificationDispatcherService — retry', () => {
           notifyWhatsappEnabled: true,
         }),
       } as never,
+      // retry() never touches service/employee/config — dispatch() is what needs them.
+      {} as never,
+      {} as never,
+      {} as never,
     );
 
     return { service, notificationRepository, whatsAppNotifier, emailNotifier };
@@ -103,7 +107,11 @@ describe('NotificationDispatcherService — retry', () => {
 
     await service.retry(notification);
 
-    expect(emailNotifier.send).toHaveBeenCalledWith('client@test.local', expect.any(String), expect.any(String));
+    expect(emailNotifier.send).toHaveBeenCalledWith(
+      'client@test.local',
+      expect.any(String),
+      expect.objectContaining({ html: expect.any(String), text: expect.any(String) }),
+    );
     const updated = (notificationRepository.update as jest.Mock).mock.calls[0][0] as Notification;
     expect(updated.status).toBe('sent');
   });

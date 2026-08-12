@@ -13,6 +13,7 @@ export class NotificationMapper {
       status: record.status,
       dedupeKey: record.dedupeKey,
       message: record.message,
+      htmlBody: record.htmlBody,
       errorMessage: record.errorMessage,
       attempts: record.attempts,
       nextAttemptAt: record.nextAttemptAt,
