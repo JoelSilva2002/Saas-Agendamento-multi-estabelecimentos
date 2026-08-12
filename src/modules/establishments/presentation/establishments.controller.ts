@@ -118,6 +118,10 @@ export class EstablishmentsController {
       noShowFeePercentage: establishment.noShowFeePercentage,
       depositEnabled: establishment.depositEnabled,
       depositPercentage: establishment.depositPercentage,
+      reminder24hEnabled: establishment.reminder24hEnabled,
+      reminder2hEnabled: establishment.reminder2hEnabled,
+      notifyEmailEnabled: establishment.notifyEmailEnabled,
+      notifyWhatsappEnabled: establishment.notifyWhatsappEnabled,
     };
   }
 

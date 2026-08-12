@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../../shared-kernel/infrastructure/prisma.service';
 import {
+  MAX_NOTIFICATION_ATTEMPTS,
   Notification,
   NotificationChannel,
   NotificationType,
@@ -23,21 +24,39 @@ export class PrismaNotificationRepository implements NotificationRepositoryPort 
     const props = notification.toPersistenceProps();
     const updated = await this.prisma.notification.update({
       where: { id: props.id },
-      data: { status: props.status, errorMessage: props.errorMessage, sentAt: props.sentAt },
+      data: {
+        status: props.status,
+        errorMessage: props.errorMessage,
+        attempts: props.attempts,
+        nextAttemptAt: props.nextAttemptAt,
+        sentAt: props.sentAt,
+      },
     });
     return NotificationMapper.toDomain(updated);
   }
 
-  async existsForAppointment(
+  async findExisting(
     appointmentId: string,
     type: NotificationType,
     channel: NotificationChannel,
     dedupeKey: string,
-  ): Promise<boolean> {
-    const count = await this.prisma.notification.count({
+  ): Promise<Notification | null> {
+    const found = await this.prisma.notification.findFirst({
       where: { appointmentId, type, channel, dedupeKey },
     });
-    return count > 0;
+    return found ? NotificationMapper.toDomain(found) : null;
+  }
+
+  async findRetryable(now: Date): Promise<Notification[]> {
+    const records = await this.prisma.notification.findMany({
+      where: {
+        status: 'failed',
+        attempts: { lt: MAX_NOTIFICATION_ATTEMPTS },
+        nextAttemptAt: { lte: now },
+      },
+      orderBy: { nextAttemptAt: 'asc' },
+    });
+    return records.map(NotificationMapper.toDomain);
   }
 
   async findByAppointment(appointmentId: string): Promise<Notification[]> {

@@ -31,9 +31,11 @@ describe('NotificationDispatcherService', () => {
     clientProfileRepository?: Partial<ClientProfileRepositoryPort>;
     whatsAppNotifier?: Partial<WhatsAppNotifierPort>;
     emailNotifier?: Partial<EmailNotifierPort>;
+    establishmentRepository?: { findByIdUnscoped: jest.Mock };
   }) {
     const notificationRepository: NotificationRepositoryPort = {
-      existsForAppointment: jest.fn().mockResolvedValue(false),
+      findExisting: jest.fn().mockResolvedValue(null),
+      findRetryable: jest.fn().mockResolvedValue([]),
       create: jest.fn().mockImplementation((n: Notification) => Promise.resolve(n)),
       update: jest.fn().mockImplementation((n: Notification) => Promise.resolve(n)),
       findByAppointment: jest.fn().mockResolvedValue([]),
@@ -67,7 +69,13 @@ describe('NotificationDispatcherService', () => {
         clientProfileRepository,
         whatsAppNotifier,
         emailNotifier,
-        { getTimeZone: jest.fn().mockResolvedValue('America/Sao_Paulo') } as never,
+        (overrides?.establishmentRepository ?? {
+          findByIdUnscoped: jest.fn().mockResolvedValue({
+            timezone: 'America/Sao_Paulo',
+            notifyEmailEnabled: true,
+            notifyWhatsappEnabled: true,
+          }),
+        }) as never,
       ),
       notificationRepository,
       userRepository,
@@ -102,13 +110,66 @@ describe('NotificationDispatcherService', () => {
 
     await service.dispatch(input);
 
-    expect(whatsAppNotifier.send).toHaveBeenCalledWith('+5511999999999', expect.any(String));
+    // Normalized to E.164 digits (no leading '+') — the shape a real WhatsApp provider expects.
+    expect(whatsAppNotifier.send).toHaveBeenCalledWith('5511999999999', expect.any(String));
     expect(notificationRepository.create).toHaveBeenCalledTimes(2);
   });
 
+  it('skips whatsapp (without creating a row) when the phone on file is not a valid BR number', async () => {
+    const profile = ClientProfile.create({
+      id: 'profile-1',
+      establishmentId: 'establishment-1',
+      userId: 'client-1',
+      phone: '123',
+    });
+    const { service, whatsAppNotifier, notificationRepository } = build({
+      clientProfileRepository: { findByUserAndEstablishment: jest.fn().mockResolvedValue(profile) },
+    });
+
+    await service.dispatch(input);
+
+    expect(whatsAppNotifier.send).not.toHaveBeenCalled();
+    // Email still goes out — only the whatsapp channel is affected.
+    expect(notificationRepository.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('skips a channel disabled at the establishment level', async () => {
+    const profile = ClientProfile.create({
+      id: 'profile-1',
+      establishmentId: 'establishment-1',
+      userId: 'client-1',
+      phone: '+5511999999999',
+    });
+    const { service, whatsAppNotifier, emailNotifier, notificationRepository } = build({
+      clientProfileRepository: { findByUserAndEstablishment: jest.fn().mockResolvedValue(profile) },
+      establishmentRepository: {
+        findByIdUnscoped: jest.fn().mockResolvedValue({
+          timezone: 'America/Sao_Paulo',
+          notifyEmailEnabled: false,
+          notifyWhatsappEnabled: true,
+        }),
+      },
+    });
+
+    await service.dispatch(input);
+
+    expect(emailNotifier.send).not.toHaveBeenCalled();
+    expect(whatsAppNotifier.send).toHaveBeenCalled();
+    expect(notificationRepository.create).toHaveBeenCalledTimes(1);
+  });
+
   it('skips a channel that was already notified for this appointment/type', async () => {
+    const existing = Notification.create({
+      id: 'existing',
+      establishmentId: input.establishmentId,
+      appointmentId: input.appointmentId,
+      recipientUserId: input.clientId,
+      channel: 'email',
+      type: input.type,
+      message: 'já enviado',
+    });
     const { service, emailNotifier, notificationRepository } = build({
-      notificationRepository: { existsForAppointment: jest.fn().mockResolvedValue(true) },
+      notificationRepository: { findExisting: jest.fn().mockResolvedValue(existing) },
     });
 
     await service.dispatch(input);

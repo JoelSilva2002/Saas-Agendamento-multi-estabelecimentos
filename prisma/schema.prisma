@@ -93,6 +93,15 @@ model Establishment {
   depositEnabled    Boolean @default(false) @map("deposit_enabled")
   depositPercentage Int?    @map("deposit_percentage")
 
+  // Notification settings (Fase 20): which of the two standard reminder windows fire, and
+  // which channels are used for every outbound notification (confirmation, reminders,
+  // cancellation, reschedule) — not just reminders. All default true so existing
+  // establishments keep today's behaviour unchanged.
+  reminder24hEnabled     Boolean @default(true) @map("reminder_24h_enabled")
+  reminder2hEnabled      Boolean @default(true) @map("reminder_2h_enabled")
+  notifyEmailEnabled     Boolean @default(true) @map("notify_email_enabled")
+  notifyWhatsappEnabled  Boolean @default(true) @map("notify_whatsapp_enabled")
+
   tenant                 Tenant                       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   membershipRoles        UserTenantRole[]
   serviceCategories      ServiceCategory[]
@@ -556,6 +565,13 @@ model Notification {
   dedupeKey       String              @default("") @map("dedupe_key")
   message         String
   errorMessage    String?             @map("error_message")
+  // Number of send attempts made so far (incremented on every real call to the channel
+  // adapter, success or failure). The retry sweep stops once this reaches MAX_ATTEMPTS in
+  // NotificationDispatcherService, leaving the row permanently `failed`.
+  attempts        Int                 @default(0)
+  // When the retry sweep may try this row again. Null means "not eligible" — either never
+  // failed, already sent, or attempts exhausted. Set on every failure to now + backoff(attempts).
+  nextAttemptAt   DateTime?           @map("next_attempt_at")
   sentAt          DateTime?           @map("sent_at")
   createdAt       DateTime            @default(now()) @map("created_at")
   updatedAt       DateTime            @updatedAt @map("updated_at")
@@ -576,6 +592,8 @@ model Notification {
   // idempotency guarantee above.
   @@unique([appointmentId, type, channel, dedupeKey])
   @@index([establishmentId, appointmentId])
+  // Backs the retry sweep's scan for due, retryable failures.
+  @@index([status, nextAttemptAt])
   @@map("notifications")
 }
 

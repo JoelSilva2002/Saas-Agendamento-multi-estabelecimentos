@@ -14,6 +14,8 @@ export class NotificationMapper {
       dedupeKey: record.dedupeKey,
       message: record.message,
       errorMessage: record.errorMessage,
+      attempts: record.attempts,
+      nextAttemptAt: record.nextAttemptAt,
       sentAt: record.sentAt,
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,

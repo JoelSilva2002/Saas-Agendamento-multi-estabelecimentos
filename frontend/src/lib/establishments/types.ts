@@ -24,6 +24,12 @@ export type Establishment = {
   noShowFeePercentage: number | null;
   depositEnabled: boolean;
   depositPercentage: number | null;
+  /** Which of the two standard reminder windows fire for this establishment's appointments. */
+  reminder24hEnabled: boolean;
+  reminder2hEnabled: boolean;
+  /** Channel kill switches — apply to every notification type, not just reminders. */
+  notifyEmailEnabled: boolean;
+  notifyWhatsappEnabled: boolean;
 };
 
 export type UpdateEstablishmentInput = {
@@ -39,6 +45,10 @@ export type UpdateEstablishmentInput = {
   noShowFeePercentage?: number | null;
   depositEnabled?: boolean;
   depositPercentage?: number | null;
+  reminder24hEnabled?: boolean;
+  reminder2hEnabled?: boolean;
+  notifyEmailEnabled?: boolean;
+  notifyWhatsappEnabled?: boolean;
 };
 
 export type BusinessHoursDay = {

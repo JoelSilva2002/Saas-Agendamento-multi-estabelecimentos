@@ -20,6 +20,10 @@ export interface UpdateEstablishmentInput {
   noShowFeePercentage?: number;
   depositEnabled?: boolean;
   depositPercentage?: number;
+  reminder24hEnabled?: boolean;
+  reminder2hEnabled?: boolean;
+  notifyEmailEnabled?: boolean;
+  notifyWhatsappEnabled?: boolean;
 }
 
 @Injectable()
@@ -54,6 +58,10 @@ export class UpdateEstablishmentUseCase {
       noShowFeePercentage: input.noShowFeePercentage,
       depositEnabled: input.depositEnabled,
       depositPercentage: input.depositPercentage,
+      reminder24hEnabled: input.reminder24hEnabled,
+      reminder2hEnabled: input.reminder2hEnabled,
+      notifyEmailEnabled: input.notifyEmailEnabled,
+      notifyWhatsappEnabled: input.notifyWhatsappEnabled,
     });
     return this.establishmentRepository.update(updated);
   }

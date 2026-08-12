@@ -72,6 +72,10 @@ export function ConfiguracoesScreen() {
       noShowFeePercentage: "",
       depositEnabled: false,
       depositPercentage: "",
+      reminder24hEnabled: true,
+      reminder2hEnabled: true,
+      notifyEmailEnabled: true,
+      notifyWhatsappEnabled: true,
     },
   });
 
@@ -104,6 +108,10 @@ export function ConfiguracoesScreen() {
           depositEnabled: establishment.depositEnabled,
           depositPercentage:
             establishment.depositPercentage != null ? String(establishment.depositPercentage) : "",
+          reminder24hEnabled: establishment.reminder24hEnabled,
+          reminder2hEnabled: establishment.reminder2hEnabled,
+          notifyEmailEnabled: establishment.notifyEmailEnabled,
+          notifyWhatsappEnabled: establishment.notifyWhatsappEnabled,
         });
         setHoursRows(
           WEEKDAYS.map((day) => {
@@ -133,6 +141,10 @@ export function ConfiguracoesScreen() {
 
   const noShowFeeEnabled = form.watch("noShowFeeEnabled");
   const depositEnabled = form.watch("depositEnabled");
+  const reminder24hEnabled = form.watch("reminder24hEnabled");
+  const reminder2hEnabled = form.watch("reminder2hEnabled");
+  const notifyEmailEnabled = form.watch("notifyEmailEnabled");
+  const notifyWhatsappEnabled = form.watch("notifyWhatsappEnabled");
 
   async function handleSubmit(values: EstablishmentFormValues) {
     if (!session) throw new Error("Sessão não encontrada");
@@ -160,6 +172,10 @@ export function ConfiguracoesScreen() {
         noShowFeePercentage: values.noShowFeeEnabled ? Number(values.noShowFeePercentage) : null,
         depositEnabled: values.depositEnabled,
         depositPercentage: values.depositEnabled ? Number(values.depositPercentage) : null,
+        reminder24hEnabled: values.reminder24hEnabled,
+        reminder2hEnabled: values.reminder2hEnabled,
+        notifyEmailEnabled: values.notifyEmailEnabled,
+        notifyWhatsappEnabled: values.notifyWhatsappEnabled,
       });
       toast.success("Estabelecimento atualizado");
     } catch (err) {
@@ -394,6 +410,46 @@ export function ConfiguracoesScreen() {
                   />
                 </Field>
               )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Lembretes e notificações</CardTitle>
+            <CardDescription>
+              Confirmação, lembretes e avisos de cancelamento/remarcação são enviados
+              automaticamente. Desative o que não fizer sentido para o seu estabelecimento.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <div className="flex items-center gap-3">
+              <Switch
+                checked={reminder24hEnabled}
+                onCheckedChange={(checked) => form.setValue("reminder24hEnabled", checked)}
+              />
+              <span className="text-sm">Lembrete 24 horas antes</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Switch
+                checked={reminder2hEnabled}
+                onCheckedChange={(checked) => form.setValue("reminder2hEnabled", checked)}
+              />
+              <span className="text-sm">Lembrete 2 horas antes</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Switch
+                checked={notifyEmailEnabled}
+                onCheckedChange={(checked) => form.setValue("notifyEmailEnabled", checked)}
+              />
+              <span className="text-sm">Enviar por e-mail</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Switch
+                checked={notifyWhatsappEnabled}
+                onCheckedChange={(checked) => form.setValue("notifyWhatsappEnabled", checked)}
+              />
+              <span className="text-sm">Enviar por WhatsApp</span>
             </div>
           </CardContent>
         </Card>

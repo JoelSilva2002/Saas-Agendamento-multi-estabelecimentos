@@ -31,6 +31,10 @@ export const establishmentSchema = z
       .string()
       .optional()
       .refine((v) => !v || (Number.isInteger(Number(v)) && Number(v) >= 1 && Number(v) <= 100), "Informe um valor entre 1 e 100"),
+    reminder24hEnabled: z.boolean(),
+    reminder2hEnabled: z.boolean(),
+    notifyEmailEnabled: z.boolean(),
+    notifyWhatsappEnabled: z.boolean(),
   })
   .refine((data) => !data.noShowFeeEnabled || !!data.noShowFeePercentage, {
     message: "Informe o percentual da multa por no-show",

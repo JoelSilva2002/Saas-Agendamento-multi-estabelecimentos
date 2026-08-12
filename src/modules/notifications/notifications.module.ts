@@ -10,9 +10,11 @@ import { PrismaNotificationRepository } from './infrastructure/persistence/prism
 import { HttpWhatsAppNotifier } from './infrastructure/channels/http-whatsapp-notifier';
 import { HttpEmailNotifier } from './infrastructure/channels/http-email-notifier';
 import { RemindersCron } from './infrastructure/reminders.cron';
+import { RetryNotificationsCron } from './infrastructure/retry-notifications.cron';
 import { NotificationDispatcherService } from './application/services/notification-dispatcher.service';
 import { AppointmentEventsListener } from './application/listeners/appointment-events.listener';
 import { DispatchDueRemindersUseCase } from './application/use-cases/dispatch-due-reminders.use-case';
+import { RetryFailedNotificationsUseCase } from './application/use-cases/retry-failed-notifications.use-case';
 import { ListAppointmentNotificationsUseCase } from './application/use-cases/list-appointment-notifications.use-case';
 import { NotificationsController } from './presentation/notifications.controller';
 
@@ -30,8 +32,10 @@ import { NotificationsController } from './presentation/notifications.controller
     NotificationDispatcherService,
     AppointmentEventsListener,
     DispatchDueRemindersUseCase,
+    RetryFailedNotificationsUseCase,
     ListAppointmentNotificationsUseCase,
     RemindersCron,
+    RetryNotificationsCron,
   ],
   // WhatsAppNotifierPort/EmailNotifierPort are reused directly by WaitlistModule (Fase 6) —
   // a waitlist alert isn't anchored to an appointmentId, so it can't go through

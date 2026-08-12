@@ -68,4 +68,20 @@ export class UpdateEstablishmentRequestDto {
   @Min(1)
   @Max(100)
   depositPercentage?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  reminder24hEnabled?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  reminder2hEnabled?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  notifyEmailEnabled?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  notifyWhatsappEnabled?: boolean;
 }

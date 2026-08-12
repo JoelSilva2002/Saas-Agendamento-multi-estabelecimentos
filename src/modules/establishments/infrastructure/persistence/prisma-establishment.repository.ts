@@ -65,6 +65,10 @@ export class PrismaEstablishmentRepository implements EstablishmentRepositoryPor
         noShowFeePercentage: props.noShowFeePercentage,
         depositEnabled: props.depositEnabled,
         depositPercentage: props.depositPercentage,
+        reminder24hEnabled: props.reminder24hEnabled,
+        reminder2hEnabled: props.reminder2hEnabled,
+        notifyEmailEnabled: props.notifyEmailEnabled,
+        notifyWhatsappEnabled: props.notifyWhatsappEnabled,
         updatedAt: props.updatedAt,
       },
     });

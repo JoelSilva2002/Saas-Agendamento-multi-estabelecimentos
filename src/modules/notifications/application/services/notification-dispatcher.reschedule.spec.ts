@@ -20,16 +20,17 @@ describe('NotificationDispatcherService — reschedule', () => {
         return notification;
       }),
       update: jest.fn(async (notification: Notification) => notification),
-      existsForAppointment: jest.fn(
+      findExisting: jest.fn(
         async (appointmentId: string, type: string, channel: string, dedupeKey: string) =>
-          stored.some(
+          stored.find(
             (n) =>
               n.appointmentId === appointmentId &&
               n.type === type &&
               n.channel === channel &&
               n.toPersistenceProps().dedupeKey === dedupeKey,
-          ),
+          ) ?? null,
       ),
+      findRetryable: jest.fn().mockResolvedValue([]),
       findByAppointment: jest.fn(),
     } as unknown as NotificationRepositoryPort;
 
@@ -41,7 +42,13 @@ describe('NotificationDispatcherService — reschedule', () => {
       { findByUserAndEstablishment: jest.fn().mockResolvedValue(null) } as never,
       { send: jest.fn() } as never,
       { send: jest.fn() } as never,
-      { getTimeZone: jest.fn().mockResolvedValue('America/Sao_Paulo') } as never,
+      {
+        findByIdUnscoped: jest.fn().mockResolvedValue({
+          timezone: 'America/Sao_Paulo',
+          notifyEmailEnabled: true,
+          notifyWhatsappEnabled: true,
+        }),
+      } as never,
     );
 
     return { service, stored };

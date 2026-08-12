@@ -32,6 +32,12 @@ export interface EstablishmentProps {
   /** Percentage (1-100) of the service price charged upfront when a "deposit" payment is
    * created. Same null-iff-disabled invariant as noShowFeePercentage. */
   depositPercentage: number | null;
+  /** Which of the two standard reminder windows fire for this establishment's appointments. */
+  reminder24hEnabled: boolean;
+  reminder2hEnabled: boolean;
+  /** Channel kill switches — apply to every notification type, not just reminders. */
+  notifyEmailEnabled: boolean;
+  notifyWhatsappEnabled: boolean;
   deletedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -51,6 +57,10 @@ export interface CreateEstablishmentProps {
   noShowFeePercentage?: number | null;
   depositEnabled?: boolean;
   depositPercentage?: number | null;
+  reminder24hEnabled?: boolean;
+  reminder2hEnabled?: boolean;
+  notifyEmailEnabled?: boolean;
+  notifyWhatsappEnabled?: boolean;
 }
 
 export class Establishment {
@@ -111,6 +121,10 @@ export class Establishment {
       noShowFeePercentage,
       depositEnabled,
       depositPercentage,
+      reminder24hEnabled: props.reminder24hEnabled ?? true,
+      reminder2hEnabled: props.reminder2hEnabled ?? true,
+      notifyEmailEnabled: props.notifyEmailEnabled ?? true,
+      notifyWhatsappEnabled: props.notifyWhatsappEnabled ?? true,
       deletedAt: null,
       createdAt: now,
       updatedAt: now,
@@ -226,6 +240,22 @@ export class Establishment {
     return this.props.depositPercentage;
   }
 
+  get reminder24hEnabled(): boolean {
+    return this.props.reminder24hEnabled;
+  }
+
+  get reminder2hEnabled(): boolean {
+    return this.props.reminder2hEnabled;
+  }
+
+  get notifyEmailEnabled(): boolean {
+    return this.props.notifyEmailEnabled;
+  }
+
+  get notifyWhatsappEnabled(): boolean {
+    return this.props.notifyWhatsappEnabled;
+  }
+
   update(changes: {
     name?: string;
     slug?: string;
@@ -238,6 +268,10 @@ export class Establishment {
     noShowFeePercentage?: number | null;
     depositEnabled?: boolean;
     depositPercentage?: number | null;
+    reminder24hEnabled?: boolean;
+    reminder2hEnabled?: boolean;
+    notifyEmailEnabled?: boolean;
+    notifyWhatsappEnabled?: boolean;
   }): Establishment {
     const name = changes.name?.trim() ?? this.props.name;
     const slug = changes.slug?.trim() ?? this.props.slug;
@@ -300,6 +334,10 @@ export class Establishment {
       noShowFeePercentage,
       depositEnabled,
       depositPercentage,
+      reminder24hEnabled: changes.reminder24hEnabled ?? this.props.reminder24hEnabled,
+      reminder2hEnabled: changes.reminder2hEnabled ?? this.props.reminder2hEnabled,
+      notifyEmailEnabled: changes.notifyEmailEnabled ?? this.props.notifyEmailEnabled,
+      notifyWhatsappEnabled: changes.notifyWhatsappEnabled ?? this.props.notifyWhatsappEnabled,
       updatedAt: new Date(),
     });
   }

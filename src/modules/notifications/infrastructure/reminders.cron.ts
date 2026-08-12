@@ -19,7 +19,7 @@ export class RemindersCron {
     const establishments = await this.establishmentRepository.findAllActive();
     for (const establishment of establishments) {
       try {
-        await this.dispatchDueReminders.execute(establishment.id);
+        await this.dispatchDueReminders.execute(establishment);
       } catch (error) {
         this.logger.error(
           `Falha ao processar lembretes do estabelecimento '${establishment.id}'`,
