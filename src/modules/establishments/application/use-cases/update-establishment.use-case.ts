@@ -11,6 +11,7 @@ export interface UpdateEstablishmentInput {
   establishmentId: string;
   name?: string;
   slug?: string;
+  description?: string | null;
   timezone?: string;
   address?: Partial<EstablishmentAddress>;
   phones?: string[];
@@ -44,6 +45,7 @@ export class UpdateEstablishmentUseCase {
     const updated = existing.update({
       name: input.name,
       slug: input.slug,
+      description: input.description,
       timezone: input.timezone,
       address: input.address,
       phones: input.phones,

@@ -61,6 +61,9 @@ model Establishment {
   // tenants. Soft-deleted rows keep holding their slug on purpose — reusing a retired
   // establishment's URL would silently redirect its old links somewhere else.
   slug      String    @unique
+  // Free-text presentation shown to clients in the public directory and on the establishment
+  // page, so they know what the place does before opening it. Optional.
+  description String? @db.Text
   // IANA zone the establishment operates in. Business hours and employee schedules are stored
   // as bare "HH:mm" wall-clock strings and are only resolved to instants against this.
   timezone  String    @default("America/Sao_Paulo")

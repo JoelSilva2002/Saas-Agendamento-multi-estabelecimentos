@@ -8,8 +8,9 @@ import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { ApiError } from "@/lib/api/client";
@@ -55,6 +56,7 @@ export function ConfiguracoesScreen() {
     defaultValues: {
       name: "",
       slug: "",
+      description: "",
       timezone: "America/Sao_Paulo",
       phones: "",
       street: "",
@@ -84,6 +86,7 @@ export function ConfiguracoesScreen() {
         form.reset({
           name: establishment.name,
           slug: establishment.slug,
+          description: establishment.description ?? "",
           timezone: establishment.timezone,
           phones: establishment.phones.join(", "),
           street: establishment.address.street ?? "",
@@ -137,6 +140,7 @@ export function ConfiguracoesScreen() {
       await updateEstablishment(session.tenantId, session.establishmentId, {
         name: values.name,
         slug: values.slug,
+        description: values.description ?? "",
         timezone: values.timezone,
         phones: values.phones
           ? values.phones.split(",").map((p) => p.trim()).filter(Boolean)
@@ -248,6 +252,26 @@ export function ConfiguracoesScreen() {
                 <Input id="establishment-phones" {...form.register("phones")} />
               </Field>
             </div>
+
+            <Field data-invalid={!!form.formState.errors.description}>
+              <FieldLabel htmlFor="establishment-description">Descrição</FieldLabel>
+              <Textarea
+                id="establishment-description"
+                rows={4}
+                placeholder="Conte ao cliente o que o seu estabelecimento faz, seu diferencial e o que ele encontra por aí."
+                {...form.register("description")}
+              />
+              <FieldDescription>
+                Aparece na busca e na página pública do estabelecimento.
+              </FieldDescription>
+              <FieldError
+                errors={
+                  form.formState.errors.description
+                    ? [{ message: form.formState.errors.description.message }]
+                    : undefined
+                }
+              />
+            </Field>
           </CardContent>
         </Card>
 

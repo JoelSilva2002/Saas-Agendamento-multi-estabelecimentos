@@ -101,6 +101,11 @@ export function EstablishmentDetail({ slug }: { slug: string }) {
             </span>
           )}
         </div>
+        {establishment.description && (
+          <p className="max-w-2xl whitespace-pre-line text-muted-foreground">
+            {establishment.description}
+          </p>
+        )}
       </div>
 
       <Card>

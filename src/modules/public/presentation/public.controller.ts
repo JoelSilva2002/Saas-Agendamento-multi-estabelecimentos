@@ -123,6 +123,7 @@ export class PublicController {
       establishmentId: establishment.id,
       name: establishment.name,
       slug: establishment.slug,
+      description: establishment.description,
       timezone: establishment.timezone,
       address: establishment.address,
       phones: establishment.phones,

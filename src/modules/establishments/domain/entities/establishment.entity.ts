@@ -16,6 +16,8 @@ export interface EstablishmentProps {
   tenantId: string;
   name: string;
   slug: string;
+  /** Free-text presentation shown to clients browsing the public directory. */
+  description: string | null;
   timezone: string;
   address: EstablishmentAddress;
   phones: string[];
@@ -40,6 +42,7 @@ export interface CreateEstablishmentProps {
   tenantId: string;
   name: string;
   slug: string;
+  description?: string | null;
   timezone?: string;
   address?: Partial<EstablishmentAddress>;
   phones?: string[];
@@ -90,6 +93,7 @@ export class Establishment {
       tenantId: props.tenantId,
       name: props.name.trim(),
       slug: props.slug.trim(),
+      description: props.description?.trim() || null,
       timezone: props.timezone ?? 'UTC',
       address: {
         street: props.address?.street ?? null,
@@ -182,6 +186,10 @@ export class Establishment {
     return this.props.slug;
   }
 
+  get description(): string | null {
+    return this.props.description;
+  }
+
   get timezone(): string {
     return this.props.timezone;
   }
@@ -221,6 +229,7 @@ export class Establishment {
   update(changes: {
     name?: string;
     slug?: string;
+    description?: string | null;
     timezone?: string;
     address?: Partial<EstablishmentAddress>;
     phones?: string[];
@@ -277,6 +286,12 @@ export class Establishment {
       ...this.props,
       name,
       slug,
+      // Distinguishes "not sent" from "cleared": undefined keeps the current text, an empty
+      // string wipes it.
+      description:
+        changes.description !== undefined
+          ? changes.description?.trim() || null
+          : this.props.description,
       timezone: changes.timezone ?? this.props.timezone,
       address: changes.address ? { ...this.props.address, ...changes.address } : this.props.address,
       phones: changes.phones ?? this.props.phones,

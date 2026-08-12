@@ -49,6 +49,7 @@ export class PrismaEstablishmentRepository implements EstablishmentRepositoryPor
       data: {
         name: props.name,
         slug: props.slug,
+        description: props.description,
         timezone: props.timezone,
         addressStreet: props.addressStreet,
         addressNumber: props.addressNumber,

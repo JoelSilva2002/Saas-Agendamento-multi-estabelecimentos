@@ -6,6 +6,7 @@ export const establishmentSchema = z
   .object({
     name: z.string().min(1, "Informe o nome"),
     slug: z.string().min(1, "Informe o slug"),
+    description: z.string().max(2000, "A descrição deve ter no máximo 2000 caracteres").optional(),
     timezone: z.string().min(1, "Informe o fuso horário"),
     phones: z.string().optional(),
     street: z.string().optional(),

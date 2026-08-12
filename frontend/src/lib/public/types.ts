@@ -19,6 +19,7 @@ export type PublicEstablishment = {
   establishmentId: string;
   name: string;
   slug: string;
+  description: string | null;
   timezone: string;
   address: PublicAddress;
   phones: string[];

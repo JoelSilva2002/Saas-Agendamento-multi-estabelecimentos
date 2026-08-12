@@ -31,6 +31,13 @@ export function EstablishmentCard({ establishment }: { establishment: PublicEsta
             <MapPin className="mt-0.5 size-4 shrink-0" />
             {address ?? "Endereço não informado"}
           </p>
+          {establishment.description && (
+            // Clamped to two lines: the card is a scannable summary, the full text lives on
+            // the establishment's own page.
+            <p className="line-clamp-2 text-sm text-muted-foreground">
+              {establishment.description}
+            </p>
+          )}
         </CardContent>
       </Card>
     </Link>

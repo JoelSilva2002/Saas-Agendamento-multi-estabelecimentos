@@ -14,6 +14,8 @@ export type Establishment = {
   tenantId: string;
   name: string;
   slug: string;
+  /** Free-text presentation shown to clients. */
+  description: string | null;
   timezone: string;
   address: EstablishmentAddress;
   phones: string[];
@@ -27,6 +29,8 @@ export type Establishment = {
 export type UpdateEstablishmentInput = {
   name?: string;
   slug?: string;
+  /** Empty string clears it. */
+  description?: string;
   timezone?: string;
   address?: Partial<EstablishmentAddress>;
   phones?: string[];

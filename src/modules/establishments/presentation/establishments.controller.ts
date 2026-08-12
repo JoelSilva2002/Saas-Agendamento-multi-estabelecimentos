@@ -109,6 +109,7 @@ export class EstablishmentsController {
       tenantId: establishment.tenantId,
       name: establishment.name,
       slug: establishment.slug,
+      description: establishment.description,
       timezone: establishment.timezone,
       address: establishment.address,
       phones: establishment.phones,

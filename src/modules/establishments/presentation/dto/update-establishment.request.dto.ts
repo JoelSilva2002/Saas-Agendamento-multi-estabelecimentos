@@ -6,6 +6,7 @@ import {
   IsOptional,
   IsString,
   Max,
+  MaxLength,
   Min,
   MinLength,
   ValidateNested,
@@ -22,6 +23,12 @@ export class UpdateEstablishmentRequestDto {
   @IsString()
   @MinLength(1)
   slug?: string;
+
+  /** Presentation text for clients. Send an empty string to clear it. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  description?: string;
 
   @IsOptional()
   @IsString()

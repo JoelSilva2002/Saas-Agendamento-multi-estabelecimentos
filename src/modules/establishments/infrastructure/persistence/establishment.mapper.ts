@@ -8,6 +8,7 @@ export class EstablishmentMapper {
       tenantId: record.tenantId,
       name: record.name,
       slug: record.slug,
+      description: record.description,
       timezone: record.timezone,
       address: {
         street: record.addressStreet,
@@ -38,6 +39,7 @@ export class EstablishmentMapper {
       tenantId: props.tenantId,
       name: props.name,
       slug: props.slug,
+      description: props.description,
       timezone: props.timezone,
       addressStreet: props.address.street,
       addressNumber: props.address.number,
