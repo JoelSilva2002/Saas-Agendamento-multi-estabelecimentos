@@ -102,4 +102,14 @@ describe('AppointmentCancelledListener', () => {
 
     await expect(listener.handleAppointmentCancelled(event)).resolves.toBeUndefined();
   });
+
+  it('skips a walk-in client with no e-mail on file', async () => {
+    const walkIn = User.createWalkIn({ id: 'client-1', firstName: 'Maria' });
+    const { listener, emailNotifier } = build({
+      userRepository: { findById: jest.fn().mockResolvedValue(walkIn) },
+    });
+
+    await listener.handleAppointmentCancelled(event);
+    expect(emailNotifier.send).not.toHaveBeenCalled();
+  });
 });

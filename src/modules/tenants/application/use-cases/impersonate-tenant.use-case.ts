@@ -55,7 +55,10 @@ export class ImpersonateTenantUseCase {
       throw new InactiveUserError();
     }
 
-    const accessToken = this.tokenService.signAccessToken({ sub: user.id, email: user.email });
+    // A tenant owner is always created through onboarding/invite, never as a walk-in client
+    // (see User.createWalkIn) — always has a real email.
+    const email = user.email!;
+    const accessToken = this.tokenService.signAccessToken({ sub: user.id, email });
 
     const session = await this.impersonationSessionRepository.create({
       id: randomUUID(),
@@ -67,7 +70,7 @@ export class ImpersonateTenantUseCase {
     return {
       accessToken,
       sessionId: session.id,
-      user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName },
+      user: { id: user.id, email, firstName: user.firstName, lastName: user.lastName },
       tenant: { id: tenant.id, name: tenant.name, slug: tenant.slug },
     };
   }

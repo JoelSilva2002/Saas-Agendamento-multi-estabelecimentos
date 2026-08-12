@@ -64,7 +64,7 @@ describe('InviteUserUseCase', () => {
       userRepository: { findByEmail: jest.fn().mockResolvedValue(existingUser) },
     });
 
-    const result = await useCase.execute({ ...input, email: existingUser.email });
+    const result = await useCase.execute({ ...input, email: existingUser.email! });
 
     expect(userRepository.create).not.toHaveBeenCalled();
     expect(result.temporaryPassword).toBeUndefined();
@@ -79,6 +79,6 @@ describe('InviteUserUseCase', () => {
       },
     });
 
-    await expect(useCase.execute({ ...input, email: existingUser.email })).rejects.toThrow(UserAlreadyMemberError);
+    await expect(useCase.execute({ ...input, email: existingUser.email! })).rejects.toThrow(UserAlreadyMemberError);
   });
 });

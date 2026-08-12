@@ -147,8 +147,11 @@ enum ThemePreference {
 
 model User {
   id              String          @id @default(uuid())
-  email           String          @unique
-  passwordHash    String          @map("password_hash")
+  // Nullable: a walk-in client created inline by staff (see User.createWalkIn()) may have
+  // neither. @unique still tolerates any number of NULLs in Postgres, so this doesn't weaken
+  // "one account per email" for everyone who does have one.
+  email           String?         @unique
+  passwordHash    String?         @map("password_hash")
   firstName       String          @map("first_name")
   lastName        String          @map("last_name")
   isActive        Boolean         @default(true) @map("is_active")

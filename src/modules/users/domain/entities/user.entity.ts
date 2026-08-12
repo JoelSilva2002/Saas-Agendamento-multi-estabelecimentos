@@ -6,8 +6,13 @@ export type ThemePreference = 'light' | 'dark' | 'system';
 
 export interface UserProps {
   id: string;
-  email: string;
-  passwordHash: string;
+  /** Null for a walk-in client created without contact info — see createWalkIn(). Every
+   * other user (staff, self-registered clients) always has one; @unique tolerates multiple
+   * NULLs in Postgres, so this doesn't weaken the "one account per email" guarantee. */
+  email: string | null;
+  /** Null iff email is null — a walk-in has no password and therefore can never log in
+   * (see User.canAuthenticate and LoginUseCase's explicit guard against a null hash). */
+  passwordHash: string | null;
   firstName: string;
   lastName: string;
   isActive: boolean;
@@ -24,6 +29,16 @@ export interface CreateUserProps {
   firstName: string;
   lastName: string;
   isPlatformAdmin?: boolean;
+}
+
+export interface CreateWalkInUserProps {
+  id: string;
+  firstName: string;
+  /** Optional — a walk-in is frequently booked with just a first name ("Dona Maria"). */
+  lastName?: string;
+  /** Optional — validated with the same rules as a real account when present, but a
+   * walk-in client is often booked with nothing more than a first name. */
+  email?: string | null;
 }
 
 export class User {
@@ -55,6 +70,34 @@ export class User {
     });
   }
 
+  /** A client created inline by staff (walk-in / phone booking) who may not have given an
+   * e-mail. Has no password and can never log in — see canAuthenticate. If an e-mail is
+   * given it's validated and normalized exactly like a real account's, so it can still be
+   * matched against later (e.g. ResolveOrCreateClientUseCase looking the person up again). */
+  static createWalkIn(props: CreateWalkInUserProps): User {
+    if (!props.firstName || props.firstName.trim().length === 0) {
+      throw new ValidationError('User requer um primeiro nome');
+    }
+    const email = props.email?.trim() || null;
+    if (email && !EMAIL_REGEX.test(email)) {
+      throw new ValidationError(`Email inválido: '${email}'`);
+    }
+
+    const now = new Date();
+    return new User({
+      id: props.id,
+      email: email?.toLowerCase() ?? null,
+      passwordHash: null,
+      firstName: props.firstName.trim(),
+      lastName: props.lastName?.trim() ?? '',
+      isActive: true,
+      isPlatformAdmin: false,
+      themePreference: 'system',
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+
   static fromPersistence(props: UserProps): User {
     return new User(props);
   }
@@ -63,12 +106,18 @@ export class User {
     return this.props.id;
   }
 
-  get email(): string {
+  get email(): string | null {
     return this.props.email;
   }
 
-  get passwordHash(): string {
+  get passwordHash(): string | null {
     return this.props.passwordHash;
+  }
+
+  /** Only accounts with both an e-mail and a password can log in — a walk-in client created
+   * without contact info has neither. */
+  get canAuthenticate(): boolean {
+    return !!this.props.email && !!this.props.passwordHash;
   }
 
   get firstName(): string {

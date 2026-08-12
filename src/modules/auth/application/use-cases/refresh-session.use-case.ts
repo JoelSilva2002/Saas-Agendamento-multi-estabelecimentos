@@ -63,7 +63,9 @@ export class RefreshSessionUseCase {
 
     await this.refreshTokenRepository.revoke(record.id, newRecord.id);
 
-    const accessToken = this.tokenService.signAccessToken({ sub: user.id, email: user.email });
+    // A refresh token only ever exists for a user who previously logged in with a password,
+    // which requires an email (see User.createWalkIn / LoginUseCase) — so this is never null.
+    const accessToken = this.tokenService.signAccessToken({ sub: user.id, email: user.email! });
 
     return { accessToken, refreshToken: newRawToken };
   }

@@ -39,12 +39,23 @@ export class LoginUseCase {
       throw new InactiveUserError();
     }
 
+    // A walk-in client (see User.createWalkIn) has no password at all — nothing to verify
+    // against, so treat it the same as a wrong password rather than crashing the hasher.
+    if (!user.passwordHash) {
+      throw new InvalidCredentialsError();
+    }
+
     const passwordMatches = await this.passwordHasher.verify(user.passwordHash, input.password);
     if (!passwordMatches) {
       throw new InvalidCredentialsError();
     }
 
-    const accessToken = this.tokenService.signAccessToken({ sub: user.id, email: user.email });
+    // Invariant: a user only ever has a passwordHash if it was also given an email (both are
+    // set together in User.create(); createWalkIn() always leaves passwordHash null) — the
+    // guard above already establishes that, so this is a real email, not a walk-in's null one.
+    const email = user.email!;
+
+    const accessToken = this.tokenService.signAccessToken({ sub: user.id, email });
     const rawRefreshToken = this.tokenService.generateOpaqueRefreshToken();
     const tokenHash = this.tokenService.hashRefreshToken(rawRefreshToken);
 
@@ -58,7 +69,7 @@ export class LoginUseCase {
     return {
       accessToken,
       refreshToken: rawRefreshToken,
-      user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName },
+      user: { id: user.id, email, firstName: user.firstName, lastName: user.lastName },
     };
   }
 

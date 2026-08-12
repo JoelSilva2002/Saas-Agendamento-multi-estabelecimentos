@@ -135,5 +135,12 @@ export function createRealAgendaApi(tenantId: string, establishmentId: string): 
     async cancelAppointment(id: string, reason: string) {
       return hydrate(await cancelAppointmentApi(tenantId, establishmentId, id, reason));
     },
+
+    invalidateClientNames() {
+      // Simplest correct fix: drop the cache so the next hydrate() refetches
+      // listTenantUsers, which by then includes the client just created (their `client`
+      // role grant already landed server-side before this is called).
+      namesPromise = null;
+    },
   };
 }

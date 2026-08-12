@@ -26,6 +26,8 @@ import { getSessionContext } from "@/lib/auth/session-context";
 import { listEligibleEmployees, listEmployees } from "@/lib/employees/api";
 import { listServices } from "@/lib/services/api";
 import { listTenantUsers } from "@/lib/users/api";
+import { createClient, listClients } from "@/lib/clients/api";
+import type { CreateClientInput } from "@/lib/clients/types";
 import { useAsync } from "@/hooks/use-async";
 import { useMediaQuery } from "@/hooks/use-media-query";
 
@@ -69,12 +71,20 @@ export function AgendaScreen() {
   const [blockDetails, setBlockDetails] = useState<AgendaBlock | null>(null);
   const [blockDetailsOpen, setBlockDetailsOpen] = useState(false);
 
+  // Clients created inline from the fit-in dialog, kept alongside catalogQuery's fetched list
+  // rather than triggering a refetch — catalogQuery is a one-shot useAsync with no mutate/
+  // refresh API, and a full refetch would race the dialog immediately selecting the new client.
+  const [extraClients, setExtraClients] = useState<{ id: string; displayName: string }[]>([]);
+
   const catalogQuery = useAsync(
     async () => {
       if (!session) throw new Error("Sessão não encontrada");
-      const [employees, services, users] = await Promise.all([
+      const [employees, services, clients, users] = await Promise.all([
         listEmployees(session.tenantId, session.establishmentId),
         listServices(session.tenantId, session.establishmentId),
+        // Real clients only — GET /tenants/:tenantId/users below also includes staff, which
+        // used to leak into the fit-in dialog's "pick a client" combobox.
+        listClients(session.tenantId, session.establishmentId),
         listTenantUsers(session.tenantId),
       ]);
       const userNames = new Map(users.map((u) => [u.id, `${u.firstName} ${u.lastName}`.trim()]));
@@ -82,8 +92,11 @@ export function AgendaScreen() {
         ...employee,
         displayName: userNames.get(employee.userId) ?? employee.jobTitle,
       }));
-      const clients = users.map((u) => ({ id: u.id, displayName: `${u.firstName} ${u.lastName}`.trim() }));
-      return { employees: employeesWithNames, services, clients };
+      const clientOptions = clients.map((c) => ({
+        id: c.userId,
+        displayName: `${c.firstName} ${c.lastName}`.trim() || c.email || "Cliente",
+      }));
+      return { employees: employeesWithNames, services, clients: clientOptions };
     },
     [session?.tenantId, session?.establishmentId],
     Boolean(session),
@@ -91,7 +104,8 @@ export function AgendaScreen() {
 
   const employees = catalogQuery.status === "success" ? catalogQuery.data.employees : [];
   const services = catalogQuery.status === "success" ? catalogQuery.data.services : [];
-  const clients = catalogQuery.status === "success" ? catalogQuery.data.clients : [];
+  const fetchedClients = catalogQuery.status === "success" ? catalogQuery.data.clients : [];
+  const clients = [...fetchedClients, ...extraClients];
   const colorMap = buildEmployeeColorMap(employees);
   const legend = buildEmployeeLegend(colorMap, employees);
   const effectiveSelectedEmployeeId = selectedEmployeeId || employees[0]?.id || "";
@@ -290,6 +304,20 @@ export function AgendaScreen() {
         getEligibleEmployeeIds={async (serviceId) => {
           const eligible = await listEligibleEmployees(session.tenantId, session.establishmentId, serviceId);
           return eligible.map((e) => e.id);
+        }}
+        onCreateClient={async (input: CreateClientInput) => {
+          const result = await createClient(session.tenantId, session.establishmentId, input);
+          const displayName = `${result.firstName} ${result.lastName}`.trim() || "Cliente";
+          setExtraClients((prev) => [...prev, { id: result.userId, displayName }]);
+          api.invalidateClientNames();
+          if (!result.wasCreated) {
+            toast.info("Cliente já cadastrado — vinculado ao agendamento.");
+          } else if (!result.email) {
+            toast.warning("Cliente cadastrado sem e-mail — não receberá confirmação nem lembretes.");
+          } else {
+            toast.success("Cliente cadastrado");
+          }
+          return { id: result.userId, displayName };
         }}
         onSubmit={async (input) => {
           await api.createFitIn(input);

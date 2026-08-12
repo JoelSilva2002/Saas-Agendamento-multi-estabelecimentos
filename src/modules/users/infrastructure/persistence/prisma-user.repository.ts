@@ -21,7 +21,9 @@ export class PrismaUserRepository implements UserRepositoryPort {
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === PRISMA_UNIQUE_CONSTRAINT_VIOLATION
       ) {
-        throw new DuplicateEmailError(user.email);
+        // Only a non-null email can ever collide — Postgres treats NULLs as distinct in the
+        // unique index, so a walk-in (null email) never lands here.
+        throw new DuplicateEmailError(user.email!);
       }
       throw error;
     }

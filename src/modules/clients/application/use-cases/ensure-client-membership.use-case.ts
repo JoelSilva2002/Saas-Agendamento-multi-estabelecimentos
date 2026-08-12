@@ -13,6 +13,11 @@ const CLIENT_ROLE_NAME = 'client';
 export interface EnsureClientMembershipInput {
   userId: string;
   establishmentId: string;
+  /** Only used the first time a profile is created for this (user, establishment) pair —
+   * ignored on a repeat call, same as the idempotent role grant. */
+  phone?: string | null;
+  birthDate?: Date | null;
+  notes?: string | null;
 }
 
 /**
@@ -33,7 +38,7 @@ export class EnsureClientMembershipUseCase {
     private readonly clientProfileRepository: ClientProfileRepositoryPort,
   ) {}
 
-  async execute(input: EnsureClientMembershipInput): Promise<void> {
+  async execute(input: EnsureClientMembershipInput): Promise<ClientProfile> {
     const establishment = await this.establishmentRepository.findByIdUnscoped(
       input.establishmentId,
     );
@@ -58,14 +63,19 @@ export class EnsureClientMembershipUseCase {
       input.userId,
       establishment.id,
     );
-    if (!existingProfile) {
-      await this.clientProfileRepository.create(
-        ClientProfile.create({
-          id: randomUUID(),
-          establishmentId: establishment.id,
-          userId: input.userId,
-        }),
-      );
+    if (existingProfile) {
+      return existingProfile;
     }
+
+    return this.clientProfileRepository.create(
+      ClientProfile.create({
+        id: randomUUID(),
+        establishmentId: establishment.id,
+        userId: input.userId,
+        phone: input.phone,
+        birthDate: input.birthDate,
+        notes: input.notes,
+      }),
+    );
   }
 }

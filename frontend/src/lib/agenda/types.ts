@@ -62,4 +62,8 @@ export type AgendaApi = {
   completeAppointment(id: string): Promise<AgendaAppointment>;
   rescheduleAppointment(id: string, input: RescheduleInput): Promise<AgendaAppointment>;
   cancelAppointment(id: string, reason: string): Promise<AgendaAppointment>;
+  /** Call after creating a client inline (e.g. from the fit-in dialog) — the name-resolution
+   * cache below is built once per mount, so without this the newly created client's own
+   * appointment would render with a placeholder name until the page is reloaded. */
+  invalidateClientNames(): void;
 };

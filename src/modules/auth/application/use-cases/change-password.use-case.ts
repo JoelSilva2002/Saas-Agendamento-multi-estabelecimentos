@@ -25,6 +25,13 @@ export class ChangePasswordUseCase {
       throw new UserNotFoundError(input.userId);
     }
 
+    // A walk-in client (see User.createWalkIn) has no password at all — there's nothing to
+    // change against. In practice this path can't be reached for one anyway, since a user
+    // with no password can never authenticate to call this use case in the first place.
+    if (!user.passwordHash) {
+      throw new WrongCurrentPasswordError();
+    }
+
     const matches = await this.passwordHasher.verify(user.passwordHash, input.currentPassword);
     if (!matches) {
       throw new WrongCurrentPasswordError();

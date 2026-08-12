@@ -177,4 +177,19 @@ describe('NotificationDispatcherService', () => {
     await expect(service.dispatch(input)).resolves.toBeUndefined();
     expect(notificationRepository.create).not.toHaveBeenCalled();
   });
+
+  it('skips a walk-in client with no e-mail on file, without creating a Notification row', async () => {
+    const walkIn = User.createWalkIn({ id: 'client-1', firstName: 'Maria' });
+    const { service, emailNotifier, notificationRepository } = build({
+      userRepository: { findById: jest.fn().mockResolvedValue(walkIn) },
+    });
+
+    await expect(service.dispatch(input)).resolves.toBeUndefined();
+
+    expect(emailNotifier.send).not.toHaveBeenCalled();
+    // No row at all — not even a `failed` one, so the retry sweep never wastes a budget on
+    // something that can never succeed.
+    expect(notificationRepository.create).not.toHaveBeenCalled();
+    expect(notificationRepository.update).not.toHaveBeenCalled();
+  });
 });

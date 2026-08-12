@@ -96,4 +96,16 @@ describe('LoginUseCase', () => {
       InactiveUserError,
     );
   });
+
+  it('throws InvalidCredentialsError for a walk-in client with no password, without calling the hasher', async () => {
+    const walkIn = User.createWalkIn({ id: 'user-2', firstName: 'Maria' });
+    const { useCase, passwordHasher } = build({
+      userRepository: { findByEmail: jest.fn().mockResolvedValue(walkIn) },
+    });
+
+    await expect(useCase.execute({ email: 'maria@example.com', password: 'anything' })).rejects.toThrow(
+      InvalidCredentialsError,
+    );
+    expect(passwordHasher.verify).not.toHaveBeenCalled();
+  });
 });

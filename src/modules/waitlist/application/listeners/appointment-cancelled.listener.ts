@@ -59,7 +59,9 @@ export class AppointmentCancelledListener {
   private async notifyEntry(entry: WaitlistEntry): Promise<void> {
     try {
       const client = await this.userRepository.findById(entry.clientId);
-      if (!client) {
+      // A walk-in client (see User.createWalkIn) has no email — nothing to notify, not an
+      // error. They can still be pulled off the waitlist by staff calling them directly.
+      if (!client || !client.email) {
         return;
       }
 

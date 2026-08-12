@@ -92,6 +92,15 @@ export class NotificationDispatcherService {
         );
         return;
       }
+      if (!client.email) {
+        // A walk-in client (see User.createWalkIn) has no email — not an error, just nothing
+        // to send to. No Notification row is created, so the retry sweep never wastes an
+        // attempt budget on something that can never succeed.
+        this.logger.debug(
+          `Cliente '${input.clientId}' sem e-mail cadastrado — notificação '${input.type}' pulada`,
+        );
+        return;
+      }
 
       const establishment = await this.establishmentRepository.findByIdUnscoped(
         input.establishmentId,

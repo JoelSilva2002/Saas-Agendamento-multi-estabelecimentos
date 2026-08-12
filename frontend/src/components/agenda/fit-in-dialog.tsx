@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronsUpDown, UserPlus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 
@@ -14,6 +14,7 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
+  CommandSeparator,
 } from "@/components/ui/command";
 import {
   Dialog,
@@ -23,7 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -36,6 +37,8 @@ import {
 import { toDateKey } from "@/lib/booking/date-utils";
 import { cn } from "@/lib/utils";
 import { fitInSchema, type FitInFormValues } from "@/lib/schemas/fit-in-schema";
+import { createClientSchema, type CreateClientFormValues } from "@/lib/schemas/client-schema";
+import type { CreateClientInput } from "@/lib/clients/types";
 import type { CreateFitInInput } from "@/lib/agenda/types";
 
 export type FitInPrefill = { date?: string; time?: string; employeeId?: string };
@@ -51,6 +54,7 @@ export function FitInDialog({
   services,
   employees,
   getEligibleEmployeeIds,
+  onCreateClient,
   onSubmit,
 }: {
   open: boolean;
@@ -62,6 +66,11 @@ export function FitInDialog({
   // Real eligibility is per-service (GET .../services/:id/employees) — there's no static
   // map to look up synchronously like the old mock had.
   getEligibleEmployeeIds: (serviceId: string) => Promise<string[]>;
+  // Resolves-or-creates via ResolveOrCreateClientUseCase on the backend — returns the same
+  // {id, displayName} shape as an entry already in `clients`, so it can be selected the same
+  // way. The parent owns the actual API call so it can also merge the new client into its own
+  // client list and invalidate any name caches.
+  onCreateClient: (input: CreateClientInput) => Promise<FitInClient>;
   onSubmit: (input: CreateFitInInput) => Promise<void>;
 }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -69,9 +78,18 @@ export function FitInDialog({
   const [clientPickerOpen, setClientPickerOpen] = useState(false);
   const [eligibleEmployeeIds, setEligibleEmployeeIds] = useState<string[] | null>(null);
 
+  const [isCreatingClient, setIsCreatingClient] = useState(false);
+  const [isSavingClient, setIsSavingClient] = useState(false);
+  const [createClientError, setCreateClientError] = useState<string | undefined>();
+
   const form = useForm<FitInFormValues>({
     resolver: zodResolver(fitInSchema),
     defaultValues: { clientId: "", serviceId: "", employeeId: "", date: "", time: "" },
+  });
+
+  const createForm = useForm<CreateClientFormValues>({
+    resolver: zodResolver(createClientSchema),
+    defaultValues: { firstName: "", lastName: "", email: "", phone: "" },
   });
 
   useEffect(() => {
@@ -85,6 +103,9 @@ export function FitInDialog({
       });
       setSubmitError(undefined);
       setEligibleEmployeeIds(null);
+      setIsCreatingClient(false);
+      createForm.reset({ firstName: "", lastName: "", email: "", phone: "" });
+      setCreateClientError(undefined);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -128,7 +149,27 @@ export function FitInDialog({
     }
   }
 
+  async function handleCreateClient(values: CreateClientFormValues) {
+    setIsSavingClient(true);
+    setCreateClientError(undefined);
+    try {
+      const created = await onCreateClient({
+        firstName: values.firstName,
+        lastName: values.lastName || undefined,
+        email: values.email || undefined,
+        phone: values.phone || undefined,
+      });
+      form.setValue("clientId", created.id, { shouldValidate: true });
+      setIsCreatingClient(false);
+    } catch (err) {
+      setCreateClientError(err instanceof Error ? err.message : "Não foi possível cadastrar o cliente");
+    } finally {
+      setIsSavingClient(false);
+    }
+  }
+
   const selectedClient = clients.find((c) => c.id === form.watch("clientId"));
+  const createFormHasEmail = !!createForm.watch("email");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -143,48 +184,131 @@ export function FitInDialog({
         <form onSubmit={form.handleSubmit(handleSubmit)} className="flex flex-col gap-4">
           <Field data-invalid={!!form.formState.errors.clientId}>
             <FieldLabel>Cliente</FieldLabel>
-            <Popover open={clientPickerOpen} onOpenChange={setClientPickerOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={clientPickerOpen}
-                  className="w-full justify-between font-normal"
-                >
-                  {selectedClient ? selectedClient.displayName : "Buscar cliente..."}
-                  <ChevronsUpDown className="size-4 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-(--radix-popover-trigger-width) p-0">
-                <Command>
-                  <CommandInput placeholder="Buscar por nome..." />
-                  <CommandList>
-                    <CommandEmpty>Nenhum cliente encontrado.</CommandEmpty>
-                    <CommandGroup>
-                      {clients.map((client) => (
+            {isCreatingClient ? (
+              <div className="flex flex-col gap-3 rounded-md border p-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <Field data-invalid={!!createForm.formState.errors.firstName}>
+                    <FieldLabel htmlFor="new-client-first-name">Nome</FieldLabel>
+                    <Input
+                      id="new-client-first-name"
+                      autoFocus
+                      {...createForm.register("firstName")}
+                    />
+                    <FieldError
+                      errors={
+                        createForm.formState.errors.firstName
+                          ? [{ message: createForm.formState.errors.firstName.message }]
+                          : undefined
+                      }
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="new-client-last-name">Sobrenome</FieldLabel>
+                    <Input id="new-client-last-name" {...createForm.register("lastName")} />
+                  </Field>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field>
+                    <FieldLabel htmlFor="new-client-phone">Telefone</FieldLabel>
+                    <Input id="new-client-phone" {...createForm.register("phone")} />
+                  </Field>
+                  <Field data-invalid={!!createForm.formState.errors.email}>
+                    <FieldLabel htmlFor="new-client-email">E-mail</FieldLabel>
+                    <Input id="new-client-email" type="email" {...createForm.register("email")} />
+                    <FieldError
+                      errors={
+                        createForm.formState.errors.email
+                          ? [{ message: createForm.formState.errors.email.message }]
+                          : undefined
+                      }
+                    />
+                  </Field>
+                </div>
+                {!createFormHasEmail && (
+                  <FieldDescription>
+                    Sem e-mail — este cliente não receberá confirmação nem lembretes.
+                  </FieldDescription>
+                )}
+                {createClientError && (
+                  <Alert variant="destructive">
+                    <AlertDescription>{createClientError}</AlertDescription>
+                  </Alert>
+                )}
+                <div className="flex justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsCreatingClient(false)}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={isSavingClient}
+                    onClick={createForm.handleSubmit(handleCreateClient)}
+                  >
+                    {isSavingClient ? "Cadastrando..." : "Cadastrar e selecionar"}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Popover open={clientPickerOpen} onOpenChange={setClientPickerOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={clientPickerOpen}
+                    className="w-full justify-between font-normal"
+                  >
+                    {selectedClient ? selectedClient.displayName : "Buscar cliente..."}
+                    <ChevronsUpDown className="size-4 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-(--radix-popover-trigger-width) p-0">
+                  <Command>
+                    <CommandInput placeholder="Buscar por nome..." />
+                    <CommandList>
+                      <CommandEmpty>Nenhum cliente encontrado.</CommandEmpty>
+                      <CommandGroup>
+                        {clients.map((client) => (
+                          <CommandItem
+                            key={client.id}
+                            value={client.displayName}
+                            onSelect={() => {
+                              form.setValue("clientId", client.id, { shouldValidate: true });
+                              setClientPickerOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "size-4",
+                                client.id === selectedClient?.id ? "opacity-100" : "opacity-0",
+                              )}
+                            />
+                            {client.displayName}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                      <CommandSeparator />
+                      <CommandGroup>
                         <CommandItem
-                          key={client.id}
-                          value={client.displayName}
                           onSelect={() => {
-                            form.setValue("clientId", client.id, { shouldValidate: true });
                             setClientPickerOpen(false);
+                            setIsCreatingClient(true);
                           }}
                         >
-                          <Check
-                            className={cn(
-                              "size-4",
-                              client.id === selectedClient?.id ? "opacity-100" : "opacity-0",
-                            )}
-                          />
-                          {client.displayName}
+                          <UserPlus className="size-4" />
+                          Cadastrar novo cliente
                         </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            )}
             <FieldError
               errors={
                 form.formState.errors.clientId

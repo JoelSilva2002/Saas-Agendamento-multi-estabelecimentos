@@ -21,7 +21,7 @@ export async function createPlatformAdmin(
       isPlatformAdmin: true,
     },
   });
-  return { id: user.id, email: user.email };
+  return { id: user.id, email };
 }
 
 export async function getRoleIdByName(prisma: PrismaClient, name: string): Promise<string> {

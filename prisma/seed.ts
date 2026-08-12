@@ -48,6 +48,10 @@ const PERMISSIONS: Array<{ key: string; description: string }> = [
   { key: 'report:read', description: 'Visualizar relatórios analíticos do estabelecimento' },
   { key: 'client:read', description: 'Visualizar o cadastro de clientes do estabelecimento' },
   { key: 'client:update', description: 'Editar o cadastro de clientes do estabelecimento' },
+  {
+    key: 'client:create',
+    description: 'Cadastrar clientes no balcão (sem exigir e-mail/senha)',
+  },
 ];
 
 const ROLE_PERMISSIONS: Record<string, string[]> = {
@@ -78,6 +82,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'report:read',
     'client:read',
     'client:update',
+    'client:create',
   ],
   manager: [
     'establishment:read',
@@ -104,6 +109,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'report:read',
     'client:read',
     'client:update',
+    'client:create',
   ],
   // Recepção: opera a agenda e recebe pagamentos, mas não configura serviços/funcionários.
   receptionist: [
@@ -123,6 +129,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'report:read',
     'client:read',
     'client:update',
+    'client:create',
   ],
   // Funcionário: enxerga a própria agenda e o catálogo, gerencia a própria jornada/folgas.
   employee: [

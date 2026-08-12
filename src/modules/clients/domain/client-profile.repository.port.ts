@@ -7,6 +7,10 @@ export abstract class ClientProfileRepositoryPort {
     establishmentId: string,
   ): Promise<ClientProfile | null>;
   abstract findById(id: string, establishmentId: string): Promise<ClientProfile | null>;
+  /** Matches on digits only — a phone typed as "(11) 99999-0000" finds a profile stored as
+   * "11999990000" or vice versa. Used by ResolveOrCreateClientUseCase to avoid creating a
+   * duplicate walk-in for someone who already has a profile at this establishment. */
+  abstract findByPhone(establishmentId: string, phone: string): Promise<ClientProfile | null>;
   abstract findMany(establishmentId: string): Promise<ClientProfile[]>;
   abstract update(profile: ClientProfile): Promise<ClientProfile>;
 
