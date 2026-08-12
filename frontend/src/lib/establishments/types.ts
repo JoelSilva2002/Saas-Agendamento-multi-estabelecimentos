@@ -27,9 +27,8 @@ export type Establishment = {
   /** Which of the two standard reminder windows fire for this establishment's appointments. */
   reminder24hEnabled: boolean;
   reminder2hEnabled: boolean;
-  /** Channel kill switches — apply to every notification type, not just reminders. */
+  /** Channel kill switch — applies to every notification type, not just reminders. */
   notifyEmailEnabled: boolean;
-  notifyWhatsappEnabled: boolean;
 };
 
 export type UpdateEstablishmentInput = {
@@ -48,7 +47,6 @@ export type UpdateEstablishmentInput = {
   reminder24hEnabled?: boolean;
   reminder2hEnabled?: boolean;
   notifyEmailEnabled?: boolean;
-  notifyWhatsappEnabled?: boolean;
 };
 
 export type BusinessHoursDay = {

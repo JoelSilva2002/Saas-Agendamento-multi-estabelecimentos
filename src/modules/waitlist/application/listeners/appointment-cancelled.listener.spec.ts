@@ -1,12 +1,9 @@
 import { AppointmentCancelledListener } from './appointment-cancelled.listener';
 import { WaitlistEntryRepositoryPort } from '../../domain/waitlist-entry.repository.port';
 import { WaitlistEntry } from '../../domain/entities/waitlist-entry.entity';
-import { WhatsAppNotifierPort } from '../../../notifications/domain/whatsapp-notifier.port';
 import { EmailNotifierPort } from '../../../notifications/domain/email-notifier.port';
 import { UserRepositoryPort } from '../../../users/domain/user.repository.port';
-import { ClientProfileRepositoryPort } from '../../../clients/domain/client-profile.repository.port';
 import { User } from '../../../users/domain/entities/user.entity';
-import { ClientProfile } from '../../../clients/domain/entities/client-profile.entity';
 import { AppointmentCancelledEvent } from '../../../appointments/domain/events/appointment-events';
 
 describe('AppointmentCancelledListener', () => {
@@ -43,8 +40,6 @@ describe('AppointmentCancelledListener', () => {
   function build(overrides?: {
     waitlistEntryRepository?: Partial<WaitlistEntryRepositoryPort>;
     userRepository?: Partial<UserRepositoryPort>;
-    clientProfileRepository?: Partial<ClientProfileRepositoryPort>;
-    whatsAppNotifier?: Partial<WhatsAppNotifierPort>;
     emailNotifier?: Partial<EmailNotifierPort>;
   }) {
     const waitlistEntryRepository: WaitlistEntryRepositoryPort = {
@@ -58,32 +53,15 @@ describe('AppointmentCancelledListener', () => {
       ...overrides?.userRepository,
     } as unknown as UserRepositoryPort;
 
-    const clientProfileRepository: ClientProfileRepositoryPort = {
-      findByUserAndEstablishment: jest.fn().mockResolvedValue(null),
-      ...overrides?.clientProfileRepository,
-    } as unknown as ClientProfileRepositoryPort;
-
-    const whatsAppNotifier: WhatsAppNotifierPort = {
-      send: jest.fn().mockResolvedValue(undefined),
-      ...overrides?.whatsAppNotifier,
-    } as unknown as WhatsAppNotifierPort;
-
     const emailNotifier: EmailNotifierPort = {
       send: jest.fn().mockResolvedValue(undefined),
       ...overrides?.emailNotifier,
     } as unknown as EmailNotifierPort;
 
     return {
-      listener: new AppointmentCancelledListener(
-        waitlistEntryRepository,
-        userRepository,
-        clientProfileRepository,
-        whatsAppNotifier,
-        emailNotifier,
-      ),
+      listener: new AppointmentCancelledListener(waitlistEntryRepository, userRepository, emailNotifier),
       waitlistEntryRepository,
       emailNotifier,
-      whatsAppNotifier,
     };
   }
 
@@ -102,21 +80,6 @@ describe('AppointmentCancelledListener', () => {
     const updatedArg = (waitlistEntryRepository.update as jest.Mock).mock
       .calls[0][0] as WaitlistEntry;
     expect(updatedArg.status).toBe('notified');
-  });
-
-  it('also notifies by whatsapp when the client has a phone on file', async () => {
-    const profile = ClientProfile.create({
-      id: 'profile-1',
-      establishmentId: 'establishment-1',
-      userId: 'client-1',
-      phone: '+5511999999999',
-    });
-    const { listener, whatsAppNotifier } = build({
-      clientProfileRepository: { findByUserAndEstablishment: jest.fn().mockResolvedValue(profile) },
-    });
-
-    await listener.handleAppointmentCancelled(event);
-    expect(whatsAppNotifier.send).toHaveBeenCalledWith('+5511999999999', expect.any(String));
   });
 
   it('skips an entry whose desiredPeriod does not match the cancelled slot', async () => {

@@ -80,8 +80,4 @@ export class UpdateEstablishmentRequestDto {
   @IsOptional()
   @IsBoolean()
   notifyEmailEnabled?: boolean;
-
-  @IsOptional()
-  @IsBoolean()
-  notifyWhatsappEnabled?: boolean;
 }

@@ -68,7 +68,6 @@ export class PrismaEstablishmentRepository implements EstablishmentRepositoryPor
         reminder24hEnabled: props.reminder24hEnabled,
         reminder2hEnabled: props.reminder2hEnabled,
         notifyEmailEnabled: props.notifyEmailEnabled,
-        notifyWhatsappEnabled: props.notifyWhatsappEnabled,
         updatedAt: props.updatedAt,
       },
     });

@@ -18,11 +18,11 @@ export const envValidationSchema = Joi.object({
     .optional(),
   SEED_PLATFORM_ADMIN_PASSWORD: Joi.string().optional(),
 
-  // All optional — unset means the corresponding adapter falls back to log/sandbox mode.
-  NOTIFICATIONS_WHATSAPP_WEBHOOK_URL: Joi.string().uri().optional(),
-  NOTIFICATIONS_WHATSAPP_API_TOKEN: Joi.string().optional(),
-  NOTIFICATIONS_EMAIL_WEBHOOK_URL: Joi.string().uri().optional(),
-  NOTIFICATIONS_EMAIL_API_TOKEN: Joi.string().optional(),
+  FRONTEND_URL: Joi.string().uri().optional(),
+
+  // Optional — unset means ResendEmailNotifier falls back to log mode.
+  RESEND_API_KEY: Joi.string().optional(),
+  NOTIFICATIONS_EMAIL_FROM: Joi.string().optional(),
 
   PAYMENT_GATEWAY_API_URL: Joi.string().uri().optional(),
   PAYMENT_GATEWAY_API_TOKEN: Joi.string().optional(),

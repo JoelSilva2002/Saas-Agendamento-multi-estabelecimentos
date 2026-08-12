@@ -75,7 +75,6 @@ export function ConfiguracoesScreen() {
       reminder24hEnabled: true,
       reminder2hEnabled: true,
       notifyEmailEnabled: true,
-      notifyWhatsappEnabled: true,
     },
   });
 
@@ -111,7 +110,6 @@ export function ConfiguracoesScreen() {
           reminder24hEnabled: establishment.reminder24hEnabled,
           reminder2hEnabled: establishment.reminder2hEnabled,
           notifyEmailEnabled: establishment.notifyEmailEnabled,
-          notifyWhatsappEnabled: establishment.notifyWhatsappEnabled,
         });
         setHoursRows(
           WEEKDAYS.map((day) => {
@@ -144,7 +142,6 @@ export function ConfiguracoesScreen() {
   const reminder24hEnabled = form.watch("reminder24hEnabled");
   const reminder2hEnabled = form.watch("reminder2hEnabled");
   const notifyEmailEnabled = form.watch("notifyEmailEnabled");
-  const notifyWhatsappEnabled = form.watch("notifyWhatsappEnabled");
 
   async function handleSubmit(values: EstablishmentFormValues) {
     if (!session) throw new Error("Sessão não encontrada");
@@ -175,7 +172,6 @@ export function ConfiguracoesScreen() {
         reminder24hEnabled: values.reminder24hEnabled,
         reminder2hEnabled: values.reminder2hEnabled,
         notifyEmailEnabled: values.notifyEmailEnabled,
-        notifyWhatsappEnabled: values.notifyWhatsappEnabled,
       });
       toast.success("Estabelecimento atualizado");
     } catch (err) {
@@ -443,13 +439,6 @@ export function ConfiguracoesScreen() {
                 onCheckedChange={(checked) => form.setValue("notifyEmailEnabled", checked)}
               />
               <span className="text-sm">Enviar por e-mail</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <Switch
-                checked={notifyWhatsappEnabled}
-                onCheckedChange={(checked) => form.setValue("notifyWhatsappEnabled", checked)}
-              />
-              <span className="text-sm">Enviar por WhatsApp</span>
             </div>
           </CardContent>
         </Card>

@@ -34,7 +34,6 @@ export const establishmentSchema = z
     reminder24hEnabled: z.boolean(),
     reminder2hEnabled: z.boolean(),
     notifyEmailEnabled: z.boolean(),
-    notifyWhatsappEnabled: z.boolean(),
   })
   .refine((data) => !data.noShowFeeEnabled || !!data.noShowFeePercentage, {
     message: "Informe o percentual da multa por no-show",

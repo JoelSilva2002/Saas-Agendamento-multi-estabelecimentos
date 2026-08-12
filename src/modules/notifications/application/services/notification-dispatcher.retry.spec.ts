@@ -1,11 +1,8 @@
 import { NotificationDispatcherService } from './notification-dispatcher.service';
 import { NotificationRepositoryPort } from '../../domain/notification.repository.port';
-import { WhatsAppNotifierPort } from '../../domain/whatsapp-notifier.port';
 import { EmailNotifierPort } from '../../domain/email-notifier.port';
 import { UserRepositoryPort } from '../../../users/domain/user.repository.port';
-import { ClientProfileRepositoryPort } from '../../../clients/domain/client-profile.repository.port';
 import { User } from '../../../users/domain/entities/user.entity';
-import { ClientProfile } from '../../../clients/domain/entities/client-profile.entity';
 import { MAX_NOTIFICATION_ATTEMPTS, Notification } from '../../domain/entities/notification.entity';
 
 /** Covers NotificationDispatcherService.retry() — the path the retry sweep cron drives, as
@@ -19,16 +16,13 @@ describe('NotificationDispatcherService — retry', () => {
     lastName: 'Teste',
   });
 
-  function buildFailedNotification(
-    channel: 'email' | 'whatsapp',
-    attempts: number,
-  ): Notification {
+  function buildFailedNotification(attempts: number): Notification {
     let notification = Notification.create({
       id: 'notification-1',
       establishmentId: 'establishment-1',
       appointmentId: 'appointment-1',
       recipientUserId: 'client-1',
-      channel,
+      channel: 'email',
       type: 'confirmation',
       message: 'Seu agendamento foi confirmado.',
     });
@@ -40,8 +34,6 @@ describe('NotificationDispatcherService — retry', () => {
 
   function build(overrides?: {
     userRepository?: Partial<UserRepositoryPort>;
-    clientProfileRepository?: Partial<ClientProfileRepositoryPort>;
-    whatsAppNotifier?: Partial<WhatsAppNotifierPort>;
     emailNotifier?: Partial<EmailNotifierPort>;
   }) {
     const notificationRepository: NotificationRepositoryPort = {
@@ -57,23 +49,6 @@ describe('NotificationDispatcherService — retry', () => {
       ...overrides?.userRepository,
     } as unknown as UserRepositoryPort;
 
-    const clientProfileRepository: ClientProfileRepositoryPort = {
-      findByUserAndEstablishment: jest.fn().mockResolvedValue(
-        ClientProfile.create({
-          id: 'profile-1',
-          establishmentId: 'establishment-1',
-          userId: 'client-1',
-          phone: '+5511999999999',
-        }),
-      ),
-      ...overrides?.clientProfileRepository,
-    } as unknown as ClientProfileRepositoryPort;
-
-    const whatsAppNotifier: WhatsAppNotifierPort = {
-      send: jest.fn().mockResolvedValue(undefined),
-      ...overrides?.whatsAppNotifier,
-    } as unknown as WhatsAppNotifierPort;
-
     const emailNotifier: EmailNotifierPort = {
       send: jest.fn().mockResolvedValue(undefined),
       ...overrides?.emailNotifier,
@@ -82,14 +57,11 @@ describe('NotificationDispatcherService — retry', () => {
     const service = new NotificationDispatcherService(
       notificationRepository,
       userRepository,
-      clientProfileRepository,
-      whatsAppNotifier,
       emailNotifier,
       {
         findByIdUnscoped: jest.fn().mockResolvedValue({
           timezone: 'America/Sao_Paulo',
           notifyEmailEnabled: true,
-          notifyWhatsappEnabled: true,
         }),
       } as never,
       // retry() never touches service/employee/config — dispatch() is what needs them.
@@ -98,12 +70,12 @@ describe('NotificationDispatcherService — retry', () => {
       {} as never,
     );
 
-    return { service, notificationRepository, whatsAppNotifier, emailNotifier };
+    return { service, notificationRepository, emailNotifier };
   }
 
   it('marks the row sent when the retry succeeds', async () => {
     const { service, notificationRepository, emailNotifier } = build();
-    const notification = buildFailedNotification('email', 1);
+    const notification = buildFailedNotification(1);
 
     await service.retry(notification);
 
@@ -120,7 +92,7 @@ describe('NotificationDispatcherService — retry', () => {
     const { service, notificationRepository } = build({
       emailNotifier: { send: jest.fn().mockRejectedValue(new Error('still down')) },
     });
-    const notification = buildFailedNotification('email', 1);
+    const notification = buildFailedNotification(1);
     const before = Date.now();
 
     await service.retry(notification);
@@ -137,7 +109,7 @@ describe('NotificationDispatcherService — retry', () => {
       emailNotifier: { send: jest.fn().mockRejectedValue(new Error('still down')) },
     });
     // Already failed MAX_NOTIFICATION_ATTEMPTS - 1 times; this retry is the last one allowed.
-    const notification = buildFailedNotification('email', MAX_NOTIFICATION_ATTEMPTS - 1);
+    const notification = buildFailedNotification(MAX_NOTIFICATION_ATTEMPTS - 1);
 
     await service.retry(notification);
 
@@ -150,35 +122,13 @@ describe('NotificationDispatcherService — retry', () => {
     const { service, notificationRepository, emailNotifier } = build({
       userRepository: { findById: jest.fn().mockResolvedValue(null) },
     });
-    const notification = buildFailedNotification('email', 1);
+    const notification = buildFailedNotification(1);
 
     await service.retry(notification);
 
     expect(emailNotifier.send).not.toHaveBeenCalled();
     const updated = (notificationRepository.update as jest.Mock).mock.calls[0][0] as Notification;
     expect(updated.status).toBe('failed');
-    expect(updated.nextAttemptAt).toBeNull();
-  });
-
-  it('gives up permanently for whatsapp when the phone on file no longer normalizes', async () => {
-    const { service, notificationRepository, whatsAppNotifier } = build({
-      clientProfileRepository: {
-        findByUserAndEstablishment: jest.fn().mockResolvedValue(
-          ClientProfile.create({
-            id: 'profile-1',
-            establishmentId: 'establishment-1',
-            userId: 'client-1',
-            phone: '123',
-          }),
-        ),
-      },
-    });
-    const notification = buildFailedNotification('whatsapp', 1);
-
-    await service.retry(notification);
-
-    expect(whatsAppNotifier.send).not.toHaveBeenCalled();
-    const updated = (notificationRepository.update as jest.Mock).mock.calls[0][0] as Notification;
     expect(updated.nextAttemptAt).toBeNull();
   });
 });

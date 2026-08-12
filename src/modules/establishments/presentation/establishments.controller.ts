@@ -121,7 +121,6 @@ export class EstablishmentsController {
       reminder24hEnabled: establishment.reminder24hEnabled,
       reminder2hEnabled: establishment.reminder2hEnabled,
       notifyEmailEnabled: establishment.notifyEmailEnabled,
-      notifyWhatsappEnabled: establishment.notifyWhatsappEnabled,
     };
   }
 

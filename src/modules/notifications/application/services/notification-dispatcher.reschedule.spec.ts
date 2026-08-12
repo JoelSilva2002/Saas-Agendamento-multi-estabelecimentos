@@ -39,8 +39,6 @@ describe('NotificationDispatcherService — reschedule', () => {
       {
         findById: jest.fn().mockResolvedValue({ id: CLIENT_ID, email: 'cliente@test.local' }),
       } as never,
-      { findByUserAndEstablishment: jest.fn().mockResolvedValue(null) } as never,
-      { send: jest.fn() } as never,
       { send: jest.fn() } as never,
       {
         findByIdUnscoped: jest.fn().mockResolvedValue({
@@ -48,7 +46,6 @@ describe('NotificationDispatcherService — reschedule', () => {
           address: {},
           timezone: 'America/Sao_Paulo',
           notifyEmailEnabled: true,
-          notifyWhatsappEnabled: true,
         }),
       } as never,
       { findById: jest.fn().mockResolvedValue(null) } as never,

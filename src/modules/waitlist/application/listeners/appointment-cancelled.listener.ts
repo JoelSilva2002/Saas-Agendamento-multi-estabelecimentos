@@ -3,10 +3,8 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { WaitlistEntryRepositoryPort } from '../../domain/waitlist-entry.repository.port';
 import { WaitlistEntry } from '../../domain/entities/waitlist-entry.entity';
 import { periodForHour, periodMatches } from '../../domain/services/waitlist-period.util';
-import { WhatsAppNotifierPort } from '../../../notifications/domain/whatsapp-notifier.port';
 import { EmailNotifierPort } from '../../../notifications/domain/email-notifier.port';
 import { UserRepositoryPort } from '../../../users/domain/user.repository.port';
-import { ClientProfileRepositoryPort } from '../../../clients/domain/client-profile.repository.port';
 import {
   APPOINTMENT_CANCELLED_EVENT,
   AppointmentCancelledEvent,
@@ -29,8 +27,6 @@ export class AppointmentCancelledListener {
   constructor(
     private readonly waitlistEntryRepository: WaitlistEntryRepositoryPort,
     private readonly userRepository: UserRepositoryPort,
-    private readonly clientProfileRepository: ClientProfileRepositoryPort,
-    private readonly whatsAppNotifier: WhatsAppNotifierPort,
     private readonly emailNotifier: EmailNotifierPort,
   ) {}
 
@@ -66,18 +62,11 @@ export class AppointmentCancelledListener {
       if (!client) {
         return;
       }
-      const clientProfile = await this.clientProfileRepository.findByUserAndEstablishment(
-        entry.clientId,
-        entry.establishmentId,
-      );
 
       await this.emailNotifier.send(client.email, 'Vaga disponível na lista de espera', {
         html: `<p>${MESSAGE}</p>`,
         text: MESSAGE,
       });
-      if (clientProfile?.phone) {
-        await this.whatsAppNotifier.send(clientProfile.phone, MESSAGE);
-      }
 
       await this.waitlistEntryRepository.update(entry.markNotified());
     } catch (error) {

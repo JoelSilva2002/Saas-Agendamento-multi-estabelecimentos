@@ -94,13 +94,13 @@ model Establishment {
   depositPercentage Int?    @map("deposit_percentage")
 
   // Notification settings (Fase 20): which of the two standard reminder windows fire, and
-  // which channels are used for every outbound notification (confirmation, reminders,
+  // whether e-mail is used at all for outbound notifications (confirmation, reminders,
   // cancellation, reschedule) — not just reminders. All default true so existing
-  // establishments keep today's behaviour unchanged.
+  // establishments keep today's behaviour unchanged. WhatsApp sending was removed in Fase 22
+  // (not viable for now) — email is the only channel.
   reminder24hEnabled     Boolean @default(true) @map("reminder_24h_enabled")
   reminder2hEnabled      Boolean @default(true) @map("reminder_2h_enabled")
   notifyEmailEnabled     Boolean @default(true) @map("notify_email_enabled")
-  notifyWhatsappEnabled  Boolean @default(true) @map("notify_whatsapp_enabled")
 
   tenant                 Tenant                       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   membershipRoles        UserTenantRole[]

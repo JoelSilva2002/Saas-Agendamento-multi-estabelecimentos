@@ -2,21 +2,17 @@ import { randomUUID } from 'crypto';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NotificationRepositoryPort } from '../../domain/notification.repository.port';
-import { WhatsAppNotifierPort } from '../../domain/whatsapp-notifier.port';
 import { EmailNotifierPort } from '../../domain/email-notifier.port';
 import {
   MAX_NOTIFICATION_ATTEMPTS,
   Notification,
-  NotificationChannel,
   NotificationType,
 } from '../../domain/entities/notification.entity';
 import { UserRepositoryPort } from '../../../users/domain/user.repository.port';
-import { ClientProfileRepositoryPort } from '../../../clients/domain/client-profile.repository.port';
 import { EstablishmentRepositoryPort } from '../../../establishments/domain/establishment.repository.port';
 import { Establishment } from '../../../establishments/domain/entities/establishment.entity';
 import { ServiceRepositoryPort } from '../../../services/domain/service.repository.port';
 import { EmployeeRepositoryPort } from '../../../employees/domain/employee.repository.port';
-import { toE164BR } from '../../../../shared-kernel/domain/phone.util';
 import { AppConfig } from '../../../../config/configuration';
 import { buildNotificationEmail } from './notification-email.template';
 
@@ -62,15 +58,16 @@ function dedupeKeyFor(input: DispatchNotificationInput): string {
 }
 
 /**
- * Central place that turns "something happened to an appointment" into zero or more
- * outbound messages. Used both synchronously (event listeners for confirmation/cancellation)
- * and from the reminders cron. Never throws — a channel failure is recorded as a `failed`
- * Notification row and logged, never propagated to the caller, since a notification problem
- * must never affect booking/cancellation or block the next cron tick.
+ * Central place that turns "something happened to an appointment" into zero or one outbound
+ * e-mail (WhatsApp was removed — email is the only channel for now). Used both synchronously
+ * (event listeners for confirmation/cancellation) and from the reminders cron. Never throws —
+ * a send failure is recorded as a `failed` Notification row and logged, never propagated to
+ * the caller, since a notification problem must never affect booking/cancellation or block the
+ * next cron tick.
  *
- * A channel send that fails is not necessarily final: `retry()` — driven by a separate sweep
- * cron — re-attempts `failed` rows within their backoff/attempt budget, re-resolving the
- * recipient address each time since it isn't stored on the row itself.
+ * A send that fails is not necessarily final: `retry()` — driven by a separate sweep cron —
+ * re-attempts `failed` rows within their backoff/attempt budget, re-resolving the recipient
+ * address each time since it isn't stored on the row itself.
  */
 @Injectable()
 export class NotificationDispatcherService {
@@ -79,8 +76,6 @@ export class NotificationDispatcherService {
   constructor(
     private readonly notificationRepository: NotificationRepositoryPort,
     private readonly userRepository: UserRepositoryPort,
-    private readonly clientProfileRepository: ClientProfileRepositoryPort,
-    private readonly whatsAppNotifier: WhatsAppNotifierPort,
     private readonly emailNotifier: EmailNotifierPort,
     private readonly establishmentRepository: EstablishmentRepositoryPort,
     private readonly serviceRepository: ServiceRepositoryPort,
@@ -107,22 +102,14 @@ export class NotificationDispatcherService {
         );
         return;
       }
-
-      const clientProfile = await this.clientProfileRepository.findByUserAndEstablishment(
-        input.clientId,
-        input.establishmentId,
-      );
+      if (!establishment.notifyEmailEnabled) {
+        return;
+      }
 
       // Times in the message must read as they do on a clock at the establishment.
       const message = this.buildMessage(input, establishment.timezone);
-
-      if (establishment.notifyEmailEnabled) {
-        const html = await this.buildEmailHtml(input, establishment, message);
-        await this.dispatchChannel(input, 'email', client.email, message, html);
-      }
-      if (clientProfile?.phone && establishment.notifyWhatsappEnabled) {
-        await this.dispatchChannel(input, 'whatsapp', clientProfile.phone, message);
-      }
+      const html = await this.buildEmailHtml(input, establishment, message);
+      await this.dispatchEmail(input, client.email, message, html);
     } catch (error) {
       this.logger.error(
         `Falha inesperada ao despachar notificação '${input.type}' para o agendamento '${input.appointmentId}'`,
@@ -134,8 +121,8 @@ export class NotificationDispatcherService {
   /**
    * Re-attempts a `failed` row that's still within its retry budget. Called by the retry
    * sweep use-case, never by the dispatch-triggering listeners/cron directly — those only
-   * ever create a row once per (appointmentId, type, channel, dedupeKey); this is the only
-   * path that acts on an existing failed one.
+   * ever create a row once per (appointmentId, type, dedupeKey); this is the only path that
+   * acts on an existing failed one.
    */
   async retry(notification: Notification): Promise<void> {
     const to = await this.resolveRecipientAddress(notification);
@@ -144,16 +131,14 @@ export class NotificationDispatcherService {
         `Não foi possível resolver o destinatário da notificação '${notification.id}' — desistindo`,
       );
       await this.notificationRepository.update(
-        notification.markFailed('destinatário não encontrado ou inválido', null),
+        notification.markFailed('destinatário não encontrado', null),
       );
       return;
     }
     await this.attemptSend(notification, to);
   }
 
-  /** Resolves service/employee names and renders the branded HTML e-mail. Only called when
-   * the email channel is actually enabled — a whatsapp-only establishment never pays for
-   * these two extra lookups. */
+  /** Resolves service/employee names and renders the branded HTML e-mail. */
   private async buildEmailHtml(
     input: DispatchNotificationInput,
     establishment: Establishment,
@@ -184,45 +169,22 @@ export class NotificationDispatcherService {
 
   private async resolveRecipientAddress(notification: Notification): Promise<string | null> {
     const client = await this.userRepository.findById(notification.recipientUserId);
-    if (!client) {
-      return null;
-    }
-    if (notification.channel === 'email') {
-      return client.email;
-    }
-    const profile = await this.clientProfileRepository.findByUserAndEstablishment(
-      notification.recipientUserId,
-      notification.establishmentId,
-    );
-    return profile?.phone ? toE164BR(profile.phone) : null;
+    return client?.email ?? null;
   }
 
-  private async dispatchChannel(
+  private async dispatchEmail(
     input: DispatchNotificationInput,
-    channel: NotificationChannel,
     to: string,
     message: string,
-    htmlBody?: string,
+    htmlBody: string,
   ): Promise<void> {
-    let resolvedTo = to;
-    if (channel === 'whatsapp') {
-      const normalized = toE164BR(to);
-      if (!normalized) {
-        this.logger.warn(
-          `Telefone '${to}' inválido para WhatsApp — notificação '${input.type}' do agendamento '${input.appointmentId}' pulada nesse canal`,
-        );
-        return;
-      }
-      resolvedTo = normalized;
-    }
-
     const dedupeKey = dedupeKeyFor(input);
     // Any existing row (regardless of status) means this exact key has already been tried on
     // the trigger side — only the retry sweep may act on it again from here on.
     const existing = await this.notificationRepository.findExisting(
       input.appointmentId,
       input.type,
-      channel,
+      'email',
       dedupeKey,
     );
     if (existing) {
@@ -234,7 +196,7 @@ export class NotificationDispatcherService {
       establishmentId: input.establishmentId,
       appointmentId: input.appointmentId,
       recipientUserId: input.clientId,
-      channel,
+      channel: 'email',
       type: input.type,
       message,
       htmlBody,
@@ -242,27 +204,23 @@ export class NotificationDispatcherService {
     });
     notification = await this.notificationRepository.create(notification);
 
-    await this.attemptSend(notification, resolvedTo);
+    await this.attemptSend(notification, to);
   }
 
   private async attemptSend(notification: Notification, to: string): Promise<void> {
     try {
-      if (notification.channel === 'whatsapp') {
-        await this.whatsAppNotifier.send(to, notification.message);
-      } else {
-        // htmlBody is only ever null for pre-existing rows created before this field existed
-        // — fall back to a plain wrap so a retry on one of those doesn't crash.
-        const html = notification.htmlBody ?? `<p>${notification.message}</p>`;
-        await this.emailNotifier.send(to, SUBJECTS[notification.type], {
-          html,
-          text: notification.message,
-        });
-      }
+      // htmlBody is only ever null for pre-existing rows created before this field existed —
+      // fall back to a plain wrap so a retry on one of those doesn't crash.
+      const html = notification.htmlBody ?? `<p>${notification.message}</p>`;
+      await this.emailNotifier.send(to, SUBJECTS[notification.type], {
+        html,
+        text: notification.message,
+      });
       await this.notificationRepository.update(notification.markSent());
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.error(
-        `Falha ao enviar notificação '${notification.type}' por ${notification.channel} para '${to}' (tentativa ${notification.attempts + 1}): ${errorMessage}`,
+        `Falha ao enviar notificação '${notification.type}' para '${to}' (tentativa ${notification.attempts + 1}): ${errorMessage}`,
       );
       const nextAttemptAt = computeNextAttempt(notification.attempts);
       await this.notificationRepository.update(notification.markFailed(errorMessage, nextAttemptAt));

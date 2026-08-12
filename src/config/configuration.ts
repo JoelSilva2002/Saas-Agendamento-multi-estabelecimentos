@@ -13,7 +13,6 @@ export interface AppConfig {
    * notifications (e.g. "ver meus agendamentos"). Never used for CORS or redirects. */
   frontendUrl: string;
   notifications: {
-    whatsapp: { webhookUrl?: string; apiToken?: string };
     email: { apiKey?: string; fromAddress: string };
   };
   paymentGateway: {
@@ -35,14 +34,10 @@ export default (): AppConfig => ({
     expiresInDays: parseInt(process.env.REFRESH_TOKEN_EXPIRES_IN_DAYS ?? '30', 10),
   },
   frontendUrl: process.env.FRONTEND_URL ?? 'http://localhost:3001',
-  // Unset credentials mean the corresponding adapter runs in "log"/"sandbox" mode instead of
-  // calling out to a real provider — see HttpWhatsAppNotifier/ResendEmailNotifier/
-  // HttpPaymentGatewayAdapter. Structure is real end-to-end; the provider is swappable.
+  // No RESEND_API_KEY means the adapter runs in "log" mode instead of calling out to a real
+  // provider — see ResendEmailNotifier/HttpPaymentGatewayAdapter. Structure is real end-to-end;
+  // the provider is swappable.
   notifications: {
-    whatsapp: {
-      webhookUrl: process.env.NOTIFICATIONS_WHATSAPP_WEBHOOK_URL,
-      apiToken: process.env.NOTIFICATIONS_WHATSAPP_API_TOKEN,
-    },
     email: {
       apiKey: process.env.RESEND_API_KEY,
       // resend.dev is Resend's shared sending domain — works out of the box with no DNS

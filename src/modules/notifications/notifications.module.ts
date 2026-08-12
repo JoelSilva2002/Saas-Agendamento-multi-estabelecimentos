@@ -1,15 +1,12 @@
 import { Module } from '@nestjs/common';
 import { AppointmentsModule } from '../appointments/appointments.module';
-import { ClientsModule } from '../clients/clients.module';
 import { UsersModule } from '../users/users.module';
 import { EstablishmentsModule } from '../establishments/establishments.module';
 import { ServicesModule } from '../services/services.module';
 import { EmployeesModule } from '../employees/employees.module';
 import { NotificationRepositoryPort } from './domain/notification.repository.port';
-import { WhatsAppNotifierPort } from './domain/whatsapp-notifier.port';
 import { EmailNotifierPort } from './domain/email-notifier.port';
 import { PrismaNotificationRepository } from './infrastructure/persistence/prisma-notification.repository';
-import { HttpWhatsAppNotifier } from './infrastructure/channels/http-whatsapp-notifier';
 import { ResendEmailNotifier } from './infrastructure/channels/resend-email-notifier';
 import { RemindersCron } from './infrastructure/reminders.cron';
 import { RetryNotificationsCron } from './infrastructure/retry-notifications.cron';
@@ -27,7 +24,6 @@ import { NotificationsController } from './presentation/notifications.controller
   // which is what keeps this from becoming a circular dependency.
   imports: [
     AppointmentsModule,
-    ClientsModule,
     UsersModule,
     EstablishmentsModule,
     // Read-only: the rich HTML e-mail includes the service and professional names.
@@ -37,7 +33,6 @@ import { NotificationsController } from './presentation/notifications.controller
   controllers: [NotificationsController],
   providers: [
     { provide: NotificationRepositoryPort, useClass: PrismaNotificationRepository },
-    { provide: WhatsAppNotifierPort, useClass: HttpWhatsAppNotifier },
     { provide: EmailNotifierPort, useClass: ResendEmailNotifier },
     NotificationDispatcherService,
     AppointmentEventsListener,
@@ -47,9 +42,9 @@ import { NotificationsController } from './presentation/notifications.controller
     RemindersCron,
     RetryNotificationsCron,
   ],
-  // WhatsAppNotifierPort/EmailNotifierPort are reused directly by WaitlistModule (Fase 6) —
-  // a waitlist alert isn't anchored to an appointmentId, so it can't go through
-  // NotificationDispatcherService/the notifications table, only through the raw channels.
-  exports: [WhatsAppNotifierPort, EmailNotifierPort],
+  // EmailNotifierPort is reused directly by WaitlistModule (Fase 6) — a waitlist alert isn't
+  // anchored to an appointmentId, so it can't go through NotificationDispatcherService/the
+  // notifications table, only through the raw channel.
+  exports: [EmailNotifierPort],
 })
 export class NotificationsModule {}
