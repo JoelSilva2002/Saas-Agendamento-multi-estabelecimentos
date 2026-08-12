@@ -32,8 +32,11 @@ export class PrismaNotificationRepository implements NotificationRepositoryPort 
     appointmentId: string,
     type: NotificationType,
     channel: NotificationChannel,
+    dedupeKey: string,
   ): Promise<boolean> {
-    const count = await this.prisma.notification.count({ where: { appointmentId, type, channel } });
+    const count = await this.prisma.notification.count({
+      where: { appointmentId, type, channel, dedupeKey },
+    });
     return count > 0;
   }
 

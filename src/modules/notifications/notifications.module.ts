@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AppointmentsModule } from '../appointments/appointments.module';
 import { ClientsModule } from '../clients/clients.module';
 import { UsersModule } from '../users/users.module';
+import { EstablishmentsModule } from '../establishments/establishments.module';
 import { NotificationRepositoryPort } from './domain/notification.repository.port';
 import { WhatsAppNotifierPort } from './domain/whatsapp-notifier.port';
 import { EmailNotifierPort } from './domain/email-notifier.port';
@@ -20,7 +21,7 @@ import { NotificationsController } from './presentation/notifications.controller
   // notifications-listing use case can read appointment data — AppointmentsModule itself
   // never imports NotificationsModule; it only emits events (see appointment-events.ts),
   // which is what keeps this from becoming a circular dependency.
-  imports: [AppointmentsModule, ClientsModule, UsersModule],
+  imports: [AppointmentsModule, ClientsModule, UsersModule, EstablishmentsModule],
   controllers: [NotificationsController],
   providers: [
     { provide: NotificationRepositoryPort, useClass: PrismaNotificationRepository },

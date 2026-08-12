@@ -92,6 +92,7 @@ describe('RescheduleAppointmentUseCase', () => {
         establishmentRepository,
         serviceRepository,
         employeeRepository,
+        { emitAsync: jest.fn().mockResolvedValue([]) } as never,
       ),
       appointmentRepository,
       employeeRepository,

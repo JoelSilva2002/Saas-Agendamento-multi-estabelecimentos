@@ -1,7 +1,12 @@
 import { ValidationError } from '../../../../shared-kernel/domain/domain-error';
 
 export type NotificationChannel = 'whatsapp' | 'email';
-export type NotificationType = 'confirmation' | 'reminder_24h' | 'reminder_2h' | 'cancellation';
+export type NotificationType =
+  | 'confirmation'
+  | 'reminder_24h'
+  | 'reminder_2h'
+  | 'cancellation'
+  | 'reschedule';
 export type NotificationStatus = 'pending' | 'sent' | 'failed';
 
 export interface NotificationProps {
@@ -12,6 +17,9 @@ export interface NotificationProps {
   channel: NotificationChannel;
   type: NotificationType;
   status: NotificationStatus;
+  /** Per-occurrence idempotency token: '' for the one-shot types, the new start time for
+   * `reschedule`, which legitimately fires again each time the appointment moves. */
+  dedupeKey: string;
   message: string;
   errorMessage: string | null;
   sentAt: Date | null;
@@ -27,6 +35,8 @@ export interface CreateNotificationProps {
   channel: NotificationChannel;
   type: NotificationType;
   message: string;
+  /** Defaults to '' — the one-shot behaviour every existing type relies on. */
+  dedupeKey?: string;
 }
 
 export class Notification {
@@ -46,6 +56,7 @@ export class Notification {
       channel: props.channel,
       type: props.type,
       status: 'pending',
+      dedupeKey: props.dedupeKey ?? '',
       message: props.message,
       errorMessage: null,
       sentAt: null,

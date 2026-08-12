@@ -1,5 +1,10 @@
 import { Injectable } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { AppointmentRepositoryPort } from '../../domain/appointment.repository.port';
+import {
+  APPOINTMENT_RESCHEDULED_EVENT,
+  AppointmentRescheduledEvent,
+} from '../../domain/events/appointment-events';
 import { Appointment } from '../../domain/entities/appointment.entity';
 import {
   AppointmentAccessDeniedError,
@@ -32,6 +37,7 @@ export class RescheduleAppointmentUseCase {
     private readonly establishmentRepository: EstablishmentRepositoryPort,
     private readonly serviceRepository: ServiceRepositoryPort,
     private readonly employeeRepository: EmployeeRepositoryPort,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async execute(input: RescheduleAppointmentInput): Promise<Appointment> {
@@ -49,6 +55,10 @@ export class RescheduleAppointmentUseCase {
       }
       await this.assertWithinCancellationWindow(input.tenantId, input.establishmentId, appointment);
     }
+
+    // Captured before appointment.reschedule() below moves it, so the notice can say where
+    // the appointment used to be.
+    const previousStartAt = appointment.startAt;
 
     const targetEmployeeId = input.newEmployeeId ?? appointment.employeeId;
 
@@ -83,7 +93,7 @@ export class RescheduleAppointmentUseCase {
 
     const date = input.newStartAt.toISOString().slice(0, 10);
 
-    return this.appointmentRepository.rescheduleIfAvailable({
+    const saved = await this.appointmentRepository.rescheduleIfAvailable({
       appointmentId: appointment.id,
       establishmentId: input.establishmentId,
       employeeId: targetEmployeeId,
@@ -93,6 +103,22 @@ export class RescheduleAppointmentUseCase {
       bufferBeforeMinutes: service.bufferBeforeMinutes,
       bufferAfterMinutes: service.bufferAfterMinutes,
     });
+
+    // Only after the move actually committed — a conflict throws above, and the client must
+    // never be told about a reschedule that did not happen.
+    const event: AppointmentRescheduledEvent = {
+      appointmentId: saved.id,
+      establishmentId: saved.establishmentId,
+      clientId: saved.clientId,
+      employeeId: saved.employeeId,
+      serviceId: saved.serviceId,
+      startAt: saved.startAt,
+      endAt: saved.endAt,
+      previousStartAt,
+    };
+    await this.eventEmitter.emitAsync(APPOINTMENT_RESCHEDULED_EVENT, event);
+
+    return saved;
   }
 
   private async assertWithinCancellationWindow(

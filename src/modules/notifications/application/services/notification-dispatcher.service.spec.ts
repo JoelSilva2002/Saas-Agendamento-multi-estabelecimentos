@@ -67,6 +67,7 @@ describe('NotificationDispatcherService', () => {
         clientProfileRepository,
         whatsAppNotifier,
         emailNotifier,
+        { getTimeZone: jest.fn().mockResolvedValue('America/Sao_Paulo') } as never,
       ),
       notificationRepository,
       userRepository,

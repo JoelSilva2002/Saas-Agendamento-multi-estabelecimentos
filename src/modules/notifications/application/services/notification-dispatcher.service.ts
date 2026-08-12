@@ -10,6 +10,7 @@ import {
 } from '../../domain/entities/notification.entity';
 import { UserRepositoryPort } from '../../../users/domain/user.repository.port';
 import { ClientProfileRepositoryPort } from '../../../clients/domain/client-profile.repository.port';
+import { EstablishmentRepositoryPort } from '../../../establishments/domain/establishment.repository.port';
 
 export interface DispatchNotificationInput {
   type: NotificationType;
@@ -19,6 +20,8 @@ export interface DispatchNotificationInput {
   startAt: Date;
   /** Required (and only used) for `cancellation`. */
   cancellationReason?: string;
+  /** Required (and only used) for `reschedule` — where the appointment used to be. */
+  previousStartAt?: Date;
 }
 
 const SUBJECTS: Record<NotificationType, string> = {
@@ -26,7 +29,14 @@ const SUBJECTS: Record<NotificationType, string> = {
   reminder_24h: 'Lembrete de agendamento',
   reminder_2h: 'Lembrete de agendamento',
   cancellation: 'Cancelamento de agendamento',
+  reschedule: 'Agendamento remarcado',
 };
+
+/** Unlike every other type, a reschedule can legitimately happen more than once for the same
+ * appointment, so its idempotency token is the new start time rather than a constant. */
+function dedupeKeyFor(input: DispatchNotificationInput): string {
+  return input.type === 'reschedule' ? input.startAt.toISOString() : '';
+}
 
 /**
  * Central place that turns "something happened to an appointment" into zero or more
@@ -45,6 +55,7 @@ export class NotificationDispatcherService {
     private readonly clientProfileRepository: ClientProfileRepositoryPort,
     private readonly whatsAppNotifier: WhatsAppNotifierPort,
     private readonly emailNotifier: EmailNotifierPort,
+    private readonly establishmentRepository: EstablishmentRepositoryPort,
   ) {}
 
   async dispatch(input: DispatchNotificationInput): Promise<void> {
@@ -62,7 +73,10 @@ export class NotificationDispatcherService {
         input.establishmentId,
       );
 
-      const message = this.buildMessage(input.type, input.startAt, input.cancellationReason);
+      // Times in the message must read as they do on a clock at the establishment.
+      const timeZone =
+        (await this.establishmentRepository.getTimeZone(input.establishmentId)) ?? 'UTC';
+      const message = this.buildMessage(input, timeZone);
 
       await this.dispatchChannel(input, 'email', client.email, message);
       if (clientProfile?.phone) {
@@ -82,10 +96,12 @@ export class NotificationDispatcherService {
     to: string,
     message: string,
   ): Promise<void> {
+    const dedupeKey = dedupeKeyFor(input);
     const alreadySent = await this.notificationRepository.existsForAppointment(
       input.appointmentId,
       input.type,
       channel,
+      dedupeKey,
     );
     if (alreadySent) {
       return;
@@ -99,6 +115,7 @@ export class NotificationDispatcherService {
       channel,
       type: input.type,
       message,
+      dedupeKey,
     });
     notification = await this.notificationRepository.create(notification);
 
@@ -118,9 +135,9 @@ export class NotificationDispatcherService {
     }
   }
 
-  private buildMessage(type: NotificationType, startAt: Date, cancellationReason?: string): string {
-    const when = this.formatDateTime(startAt);
-    switch (type) {
+  private buildMessage(input: DispatchNotificationInput, timeZone: string): string {
+    const when = this.formatDateTime(input.startAt, timeZone);
+    switch (input.type) {
       case 'confirmation':
         return `Seu agendamento para ${when} foi confirmado.`;
       case 'reminder_24h':
@@ -128,11 +145,34 @@ export class NotificationDispatcherService {
       case 'reminder_2h':
         return `Lembrete: seu agendamento é hoje, ${when} (em cerca de 2 horas).`;
       case 'cancellation':
-        return `Seu agendamento de ${when} foi cancelado. Motivo: ${cancellationReason ?? 'não informado'}.`;
+        return `Seu agendamento de ${when} foi cancelado. Motivo: ${input.cancellationReason ?? 'não informado'}.`;
+      case 'reschedule':
+        return input.previousStartAt
+          ? `Seu agendamento foi remarcado de ${this.formatDateTime(input.previousStartAt, timeZone)} para ${when}.`
+          : `Seu agendamento foi remarcado para ${when}.`;
     }
   }
 
-  private formatDateTime(date: Date): string {
-    return `${date.toISOString().slice(0, 10)} às ${date.toISOString().slice(11, 16)}`;
+  /**
+   * Reads the instant on a clock at the establishment, not in UTC.
+   *
+   * Getting this wrong is not cosmetic: a client in São Paulo told "às 18:00" for an
+   * appointment that is actually at 15:00 would simply miss it.
+   */
+  private formatDateTime(date: Date, timeZone: string): string {
+    const parts = new Intl.DateTimeFormat('pt-BR', {
+      timeZone,
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).formatToParts(date);
+
+    const get = (type: Intl.DateTimeFormatPartTypes) =>
+      parts.find((part) => part.type === type)?.value ?? '';
+
+    return `${get('day')}/${get('month')}/${get('year')} às ${get('hour')}:${get('minute')}`;
   }
 }

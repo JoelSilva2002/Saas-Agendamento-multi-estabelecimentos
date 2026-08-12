@@ -4,8 +4,10 @@ import { NotificationDispatcherService } from '../services/notification-dispatch
 import {
   APPOINTMENT_CANCELLED_EVENT,
   APPOINTMENT_CREATED_EVENT,
+  APPOINTMENT_RESCHEDULED_EVENT,
   AppointmentCancelledEvent,
   AppointmentCreatedEvent,
+  AppointmentRescheduledEvent,
 } from '../../../appointments/domain/events/appointment-events';
 
 /** Reacts to appointment lifecycle events emitted by the appointments module — this is the
@@ -36,6 +38,18 @@ export class AppointmentEventsListener {
       clientId: event.clientId,
       startAt: event.startAt,
       cancellationReason: event.cancellationReason,
+    });
+  }
+
+  @OnEvent(APPOINTMENT_RESCHEDULED_EVENT)
+  async handleAppointmentRescheduled(event: AppointmentRescheduledEvent): Promise<void> {
+    await this.dispatcher.dispatch({
+      type: 'reschedule',
+      establishmentId: event.establishmentId,
+      appointmentId: event.appointmentId,
+      clientId: event.clientId,
+      startAt: event.startAt,
+      previousStartAt: event.previousStartAt,
     });
   }
 }

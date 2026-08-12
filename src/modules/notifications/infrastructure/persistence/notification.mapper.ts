@@ -11,6 +11,7 @@ export class NotificationMapper {
       channel: record.channel,
       type: record.type,
       status: record.status,
+      dedupeKey: record.dedupeKey,
       message: record.message,
       errorMessage: record.errorMessage,
       sentAt: record.sentAt,
