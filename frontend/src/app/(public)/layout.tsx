@@ -12,7 +12,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4">
           <Link href="/" className="flex items-center gap-2 font-semibold">
             <CalendarClock className="size-5 text-primary" />
-            AgendaSaaS
+            OffVance Agendamentos
           </Link>
           <div className="flex items-center gap-2">
             <Button variant="ghost" asChild>
@@ -26,7 +26,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
       <main className="flex-1">{children}</main>
       <footer className="border-t">
         <div className="mx-auto w-full max-w-6xl px-4 py-6 text-sm text-muted-foreground">
-          © {new Date().getFullYear()} AgendaSaaS. Todos os direitos reservados.
+          © {new Date().getFullYear()} OffVance Agendamentos. Todos os direitos reservados.
         </div>
       </footer>
     </div>

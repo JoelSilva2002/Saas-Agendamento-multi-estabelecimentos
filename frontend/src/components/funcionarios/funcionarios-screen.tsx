@@ -1,7 +1,7 @@
 "use client";
 
 import { UserCog, UserX } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -88,6 +88,13 @@ export function FuncionariosScreen() {
   }
 
   const userNames = new Map(users.map((u) => [u.id, `${u.firstName} ${u.lastName}`.trim()]));
+
+  // Stable identity so EmployeeScheduleDialog's load effect doesn't refetch (and clobber
+  // unsaved edits) every time this screen re-renders while the dialog is open.
+  const fetchEmployeeSchedule = useCallback(
+    (employeeId: string) => getEmployeeSchedule(session.tenantId, session.establishmentId, employeeId),
+    [session.tenantId, session.establishmentId],
+  );
 
   async function handleCreate(values: EmployeeInviteFormValues) {
     if (!session) throw new Error("Sessão não encontrada");
@@ -249,9 +256,7 @@ export function FuncionariosScreen() {
         open={scheduleOpen}
         onOpenChange={setScheduleOpen}
         employee={scheduleEmployee}
-        getSchedule={(employeeId) =>
-          getEmployeeSchedule(session.tenantId, session.establishmentId, employeeId)
-        }
+        getSchedule={fetchEmployeeSchedule}
         onSave={async (employeeId, slots) => {
           await setEmployeeSchedule(session.tenantId, session.establishmentId, employeeId, slots);
         }}

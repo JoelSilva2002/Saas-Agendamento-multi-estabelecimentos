@@ -19,7 +19,7 @@ export class EmployeeScheduleSlotRequestDto {
 
 export class SetEmployeeScheduleRequestDto {
   @IsArray()
-  @ArrayMaxSize(28) // 7 dias x até 4 slots/dia é generoso o suficiente
+  @ArrayMaxSize(63) // 7 dias x até 9 slots/dia (1 jornada + várias pausas)
   @ValidateNested({ each: true })
   @Type(() => EmployeeScheduleSlotRequestDto)
   slots!: EmployeeScheduleSlotRequestDto[];

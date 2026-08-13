@@ -56,6 +56,9 @@ export function AgendaCalendar({
         height="auto"
         slotMinTime="08:00:00"
         slotMaxTime="19:00:00"
+        // pt-BR's default slot format omits the zero minutes ("08" instead of "08:00") —
+        // spelling it out explicitly keeps the hour ruler unambiguous.
+        slotHeaderFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
         nowIndicator
         allDaySlot={false}
         selectable

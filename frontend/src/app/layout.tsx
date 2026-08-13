@@ -18,10 +18,10 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "AgendaSaaS",
-    template: "%s · AgendaSaaS",
+    default: "OffVance Agendamentos",
+    template: "%s · OffVance Agendamentos",
   },
-  description: "Sistema de agendamento SaaS multi-tenant para estabelecimentos",
+  description: "Sistema de agendamento multi-tenant para estabelecimentos",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

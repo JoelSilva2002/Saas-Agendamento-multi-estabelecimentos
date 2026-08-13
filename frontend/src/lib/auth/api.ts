@@ -69,3 +69,20 @@ export function changePassword(currentPassword: string, newPassword: string): Pr
     body: JSON.stringify({ currentPassword, newPassword }),
   });
 }
+
+// Always resolves — the backend never reveals whether the e-mail exists (enumeration defense).
+export function requestPasswordReset(email: string): Promise<void> {
+  return apiFetch<void>("/auth/forgot-password", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+}
+
+export type ResetPasswordResult = { redirectTo: "login" | "entrar" };
+
+export function resetPassword(token: string, newPassword: string): Promise<ResetPasswordResult> {
+  return apiFetch<ResetPasswordResult>("/auth/reset-password", {
+    method: "POST",
+    body: JSON.stringify({ token, newPassword }),
+  });
+}

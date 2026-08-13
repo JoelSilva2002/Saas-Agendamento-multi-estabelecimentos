@@ -6,7 +6,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
     <div className="flex min-h-svh flex-col items-center justify-center gap-8 p-4">
       <Link href="/" className="flex items-center gap-2 font-semibold">
         <CalendarClock className="size-5 text-primary" />
-        AgendaSaaS
+        OffVance Agendamentos
       </Link>
       <div className="w-full max-w-sm">{children}</div>
     </div>

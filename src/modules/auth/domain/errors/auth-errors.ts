@@ -1,4 +1,4 @@
-import { ForbiddenError, UnauthorizedError } from '../../../../shared-kernel/domain/domain-error';
+import { ForbiddenError, UnauthorizedError, ValidationError } from '../../../../shared-kernel/domain/domain-error';
 
 export class InvalidCredentialsError extends UnauthorizedError {
   constructor() {
@@ -24,5 +24,14 @@ export class InvalidRefreshTokenError extends UnauthorizedError {
 export class WrongCurrentPasswordError extends ForbiddenError {
   constructor() {
     super('A senha atual está incorreta');
+  }
+}
+
+/** 400, not 401: the same "don't trip the session-expired interceptor" reasoning as above
+ * applies here too — a stale access token sitting in localStorage from a previous session must
+ * never turn a bad/expired reset link into an unwanted redirect to /login. */
+export class InvalidOrExpiredResetTokenError extends ValidationError {
+  constructor() {
+    super('Link de redefinição de senha inválido ou expirado');
   }
 }

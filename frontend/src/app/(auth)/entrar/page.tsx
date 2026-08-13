@@ -104,6 +104,11 @@ export default function ClientLoginPage() {
                   : undefined
               }
             />
+            <p className="text-right text-sm">
+              <Link href="/esqueci-senha" className="text-primary underline underline-offset-4">
+                Esqueci minha senha
+              </Link>
+            </p>
           </Field>
 
           {submitError && (

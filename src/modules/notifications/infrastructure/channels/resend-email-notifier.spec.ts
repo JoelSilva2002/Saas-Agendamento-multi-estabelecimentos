@@ -14,7 +14,7 @@ describe('ResendEmailNotifier', () => {
       get: jest.fn().mockReturnValue({
         email: {
           apiKey: overrides.apiKey,
-          fromAddress: overrides.fromAddress ?? 'AgendaSaaS <onboarding@resend.dev>',
+          fromAddress: overrides.fromAddress ?? 'OffVance Agendamentos <onboarding@resend.dev>',
         },
       }),
     };
@@ -34,7 +34,7 @@ describe('ResendEmailNotifier', () => {
 
   it('POSTs to the Resend API with the configured from address and bearer token', async () => {
     global.fetch = jest.fn().mockResolvedValue({ ok: true }) as never;
-    const notifier = build({ apiKey: 're_test_123', fromAddress: 'AgendaSaaS <no-reply@agendasaas.com>' });
+    const notifier = build({ apiKey: 're_test_123', fromAddress: 'OffVance Agendamentos <no-reply@offvance.com>' });
 
     await notifier.send('client@test.local', 'Assunto', { html: '<p>oi</p>', text: 'oi' });
 
@@ -50,7 +50,7 @@ describe('ResendEmailNotifier', () => {
     );
     const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
     expect(body).toEqual({
-      from: 'AgendaSaaS <no-reply@agendasaas.com>',
+      from: 'OffVance Agendamentos <no-reply@offvance.com>',
       to: ['client@test.local'],
       subject: 'Assunto',
       html: '<p>oi</p>',

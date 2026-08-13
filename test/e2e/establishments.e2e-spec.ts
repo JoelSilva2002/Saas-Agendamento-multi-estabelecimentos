@@ -43,7 +43,10 @@ describe('Establishments CRUD (e2e)', () => {
       .get(`/tenants/${tenantId}/establishments`)
       .set('Authorization', `Bearer ${ownerToken}`)
       .expect(200);
-    expect(list.body).toHaveLength(1);
+    // Tenant creation itself provisions one establishment (see CreateTenantRequestDto's
+    // establishmentName/establishmentSlug) plus the one just created above.
+    expect(list.body).toHaveLength(2);
+    expect(list.body).toContainEqual(expect.objectContaining({ id: created.body.id }));
 
     const fetched = await request(app.getHttpServer())
       .get(`/tenants/${tenantId}/establishments/${created.body.id}`)

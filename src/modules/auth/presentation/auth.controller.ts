@@ -12,11 +12,15 @@ import { LoginUseCase } from '../application/use-cases/login.use-case';
 import { RefreshSessionUseCase } from '../application/use-cases/refresh-session.use-case';
 import { LogoutUseCase } from '../application/use-cases/logout.use-case';
 import { ChangePasswordUseCase } from '../application/use-cases/change-password.use-case';
+import { RequestPasswordResetUseCase } from '../application/use-cases/request-password-reset.use-case';
+import { ResetPasswordUseCase } from '../application/use-cases/reset-password.use-case';
 import { ChangePasswordRequestDto } from './dto/change-password.request.dto';
 import { LoginRequestDto } from './dto/login.request.dto';
 import { RefreshRequestDto } from './dto/refresh.request.dto';
 import { RegisterClientRequestDto } from './dto/register-client.request.dto';
 import { UpdateThemePreferenceRequestDto } from './dto/update-theme-preference.request.dto';
+import { ForgotPasswordRequestDto } from './dto/forgot-password.request.dto';
+import { ResetPasswordRequestDto } from './dto/reset-password.request.dto';
 import { Public } from './decorators/public.decorator';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
@@ -36,6 +40,8 @@ export class AuthController {
     private readonly registerClientUseCase: RegisterClientUseCase,
     private readonly userRepository: UserRepositoryPort,
     private readonly changePasswordUseCase: ChangePasswordUseCase,
+    private readonly requestPasswordResetUseCase: RequestPasswordResetUseCase,
+    private readonly resetPasswordUseCase: ResetPasswordUseCase,
   ) {}
 
   @Public()
@@ -89,6 +95,20 @@ export class AuthController {
           }
         : null,
     };
+  }
+
+  @Public()
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async forgotPassword(@Body() dto: ForgotPasswordRequestDto) {
+    await this.requestPasswordResetUseCase.execute({ email: dto.email });
+  }
+
+  @Public()
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  async resetPassword(@Body() dto: ResetPasswordRequestDto) {
+    return this.resetPasswordUseCase.execute({ token: dto.token, newPassword: dto.newPassword });
   }
 
   @UseGuards(JwtAuthGuard)

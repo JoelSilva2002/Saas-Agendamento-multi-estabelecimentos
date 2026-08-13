@@ -68,6 +68,8 @@ export async function createTenantWithOwner(
       ownerFirstName: 'Owner',
       ownerLastName: 'User',
       ownerPassword,
+      establishmentName: `Estabelecimento ${suffix}`,
+      establishmentSlug: `estabelecimento-${suffix}`,
     })
     .expect(201);
 

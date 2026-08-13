@@ -13,6 +13,9 @@ export const envValidationSchema = Joi.object({
 
   REFRESH_TOKEN_EXPIRES_IN_DAYS: Joi.number().default(30),
 
+  PASSWORD_RESET_TOKEN_EXPIRES_IN_MINUTES: Joi.number().default(60),
+  PASSWORD_RESET_COOLDOWN_MINUTES: Joi.number().default(2),
+
   SEED_PLATFORM_ADMIN_EMAIL: Joi.string()
     .email({ tlds: { allow: false } })
     .optional(),

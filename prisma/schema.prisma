@@ -163,8 +163,9 @@ model User {
   createdAt       DateTime        @default(now()) @map("created_at")
   updatedAt       DateTime        @updatedAt @map("updated_at")
 
-  tenantRoles   UserTenantRole[]
-  refreshTokens RefreshToken[]
+  tenantRoles         UserTenantRole[]
+  refreshTokens       RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
 
   // Scheduling domain relations. A single user can be staff at one establishment and a
   // client at another (or both) — see ADR note above Employee/ClientProfile.
@@ -259,6 +260,23 @@ model RefreshToken {
 
   @@index([userId])
   @@map("refresh_tokens")
+}
+
+// "Esqueci minha senha" (Fase 25) — same hash-lookup shape as RefreshToken. One row per
+// requested reset; consumed (revokedAt set) the moment the password is actually changed, so a
+// link can never be replayed after use.
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
 }
 
 // Machine-to-machine credential scoped to one establishment (Fase 24): lets the
