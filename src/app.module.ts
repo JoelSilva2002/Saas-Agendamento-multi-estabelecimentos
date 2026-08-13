@@ -23,6 +23,8 @@ import { CouponsModule } from './modules/coupons/coupons.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { PublicModule } from './modules/public/public.module';
+import { ApiKeysModule } from './modules/api-keys/api-keys.module';
+import { IntegrationsModule } from './modules/integrations/integrations.module';
 
 @Module({
   imports: [
@@ -52,6 +54,8 @@ import { PublicModule } from './modules/public/public.module';
     ReviewsModule,
     ReportsModule,
     PublicModule,
+    ApiKeysModule,
+    IntegrationsModule,
   ],
 })
 export class AppModule {}

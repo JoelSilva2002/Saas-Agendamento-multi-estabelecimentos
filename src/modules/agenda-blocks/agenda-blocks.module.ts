@@ -14,5 +14,8 @@ import { AgendaBlocksController } from './presentation/agenda-blocks.controller'
     ListAgendaBlocksUseCase,
     DeleteAgendaBlockUseCase,
   ],
+  // Re-exported for AppointmentsModule's GetAvailableSlotsUseCase — manual blocks must be
+  // subtracted from availability, not just shown on the calendar.
+  exports: [AgendaBlockRepositoryPort],
 })
 export class AgendaBlocksModule {}

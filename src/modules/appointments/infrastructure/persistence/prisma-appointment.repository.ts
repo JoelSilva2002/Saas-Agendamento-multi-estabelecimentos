@@ -81,6 +81,16 @@ export class PrismaAppointmentRepository implements AppointmentRepositoryPort {
     return found ? AppointmentMapper.toDomain(found) : null;
   }
 
+  async findByIdempotencyKey(
+    establishmentId: string,
+    idempotencyKey: string,
+  ): Promise<Appointment | null> {
+    const found = await this.prisma.appointment.findFirst({
+      where: { establishmentId, idempotencyKey },
+    });
+    return found ? AppointmentMapper.toDomain(found) : null;
+  }
+
   async findMany(
     establishmentId: string,
     filters: ListAppointmentsFilters,
@@ -158,6 +168,7 @@ export class PrismaAppointmentRepository implements AppointmentRepositoryPort {
             endAt: params.endAt,
             priceCents: params.priceCents,
             isFitIn: params.isFitIn,
+            idempotencyKey: params.idempotencyKey ?? null,
             createdById: params.createdById,
           },
         });
@@ -165,8 +176,26 @@ export class PrismaAppointmentRepository implements AppointmentRepositoryPort {
 
       return AppointmentMapper.toDomain(created);
     } catch (error) {
+      // A second request racing with the same Idempotency-Key loses the unique-index race
+      // here rather than the controller's check-first lookup — recover by returning the
+      // appointment the winner just created instead of surfacing a 409/500.
+      if (params.idempotencyKey && this.isUniqueConstraintViolation(error)) {
+        const existing = await this.findByIdempotencyKey(
+          params.establishmentId,
+          params.idempotencyKey,
+        );
+        if (existing) {
+          return existing;
+        }
+      }
       throw this.translateConflict(error);
     }
+  }
+
+  private isUniqueConstraintViolation(error: unknown): boolean {
+    return (
+      error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002'
+    );
   }
 
   async rescheduleIfAvailable(
@@ -215,7 +244,7 @@ export class PrismaAppointmentRepository implements AppointmentRepositoryPort {
     const weekday = new Date(`${params.date}T00:00:00.000Z`).getUTCDay();
     const { dayStart, dayEnd } = dayRange(params.date);
 
-    const [establishment, businessHours, scheduleSlots, timeOffEntries, busyAppointments] =
+    const [establishment, businessHours, scheduleSlots, timeOffEntries, busyAppointments, agendaBlocks] =
       await Promise.all([
         tx.establishment.findUnique({
           where: { id: params.establishmentId },
@@ -242,6 +271,17 @@ export class PrismaAppointmentRepository implements AppointmentRepositoryPort {
           },
           include: { service: { select: { bufferBeforeMinutes: true, bufferAfterMinutes: true } } },
         }),
+        // Manual blocks (see AgendaBlocksModule) — this is the authoritative gate that
+        // actually prevents a race from booking into a block, not just the read-only
+        // availability listing in GetAvailableSlotsUseCase.
+        tx.agendaBlock.findMany({
+          where: {
+            establishmentId: params.establishmentId,
+            OR: [{ employeeId: params.employeeId }, { employeeId: null }],
+            startAt: { lt: dayEnd },
+            endAt: { gt: dayStart },
+          },
+        }),
       ]);
 
     const context: AvailabilityContext = {
@@ -267,14 +307,17 @@ export class PrismaAppointmentRepository implements AppointmentRepositoryPort {
           endTime: dateToTimeString(slot.endTime) as string,
         })),
       timeOffRanges: timeOffEntries.map((entry) => ({ start: entry.startAt, end: entry.endAt })),
-      busyRanges: busyAppointments.map((appointment) => ({
-        start: new Date(
-          appointment.startAt.getTime() - appointment.service.bufferBeforeMinutes * 60_000,
-        ),
-        end: new Date(
-          appointment.endAt.getTime() + appointment.service.bufferAfterMinutes * 60_000,
-        ),
-      })),
+      busyRanges: [
+        ...busyAppointments.map((appointment) => ({
+          start: new Date(
+            appointment.startAt.getTime() - appointment.service.bufferBeforeMinutes * 60_000,
+          ),
+          end: new Date(
+            appointment.endAt.getTime() + appointment.service.bufferAfterMinutes * 60_000,
+          ),
+        })),
+        ...agendaBlocks.map((block) => ({ start: block.startAt, end: block.endAt })),
+      ],
       // durationMinutes/slotIntervalMinutes are unused by isRangeAvailable (it works off the
       // explicit candidateStart/candidateEnd instead) — present only to satisfy the shared
       // context shape.

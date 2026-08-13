@@ -14,6 +14,7 @@ export class AppointmentMapper {
       status: record.status,
       priceCents: record.priceCents,
       isFitIn: record.isFitIn,
+      idempotencyKey: record.idempotencyKey,
       cancellationReason: record.cancellationReason,
       cancelledAt: record.cancelledAt,
       cancelledById: record.cancelledById,

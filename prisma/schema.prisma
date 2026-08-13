@@ -117,6 +117,7 @@ model Establishment {
   reviews                Review[]
   coupons                Coupon[]
   clientProfiles         ClientProfile[]
+  apiKeys                ApiKey[]
 
   @@index([tenantId])
   @@index([addressCity])
@@ -181,6 +182,8 @@ model User {
   // SuperAdmin impersonation audit — see ImpersonationSession.
   impersonationSessionsAsAdmin  ImpersonationSession[] @relation("ImpersonationSessionsAsAdmin")
   impersonationSessionsAsTarget ImpersonationSession[] @relation("ImpersonationSessionsAsTarget")
+
+  apiKeysCreated ApiKey[]
 
   @@map("users")
 }
@@ -256,6 +259,35 @@ model RefreshToken {
 
   @@index([userId])
   @@map("refresh_tokens")
+}
+
+// Machine-to-machine credential scoped to one establishment (Fase 24): lets the
+// establishment's own automation (e.g. a WhatsApp bot) query/create/cancel/reschedule
+// appointments without a human JWT session. Hash-lookup pattern mirrors RefreshToken —
+// the raw secret is shown to the user exactly once at creation time and never persisted.
+model ApiKey {
+  id              String    @id @default(uuid())
+  establishmentId String    @map("establishment_id")
+  name            String
+  // First few characters of the raw secret, kept in the clear so the UI can help identify
+  // which key is which without ever re-displaying the full secret.
+  keyPrefix       String    @map("key_prefix")
+  keyHash         String    @unique @map("key_hash")
+  // Permission keys granted to this key — reuses the same RBAC permission strings
+  // PermissionsGuard already checks (e.g. "appointment:create") instead of a parallel
+  // scope vocabulary, so IntegrationAuthGuard is a drop-in alternative to TenantScopeGuard.
+  scopes          String[]
+  createdById     String    @map("created_by_id")
+  lastUsedAt      DateTime? @map("last_used_at")
+  expiresAt       DateTime? @map("expires_at")
+  revokedAt       DateTime? @map("revoked_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  establishment Establishment @relation(fields: [establishmentId], references: [id], onDelete: Cascade)
+  createdBy     User          @relation(fields: [createdById], references: [id])
+
+  @@index([establishmentId])
+  @@map("api_keys")
 }
 
 // ---------------------------------------------------------------------------
@@ -468,6 +500,11 @@ model Appointment {
   // "Encaixe": deliberately booked outside normal availability / overlapping another
   // appointment. Bypasses the anti-overlap exclusion constraint (see migration SQL).
   isFitIn            Boolean           @default(false) @map("is_fit_in")
+  // Optional client-supplied dedupe key for the integration API (Fase 24) — a bot retrying a
+  // timed-out POST with the same key gets the original appointment back instead of a
+  // duplicate. Null for every non-integration booking path; Postgres treats NULLs as distinct
+  // so @@unique below never collides between them.
+  idempotencyKey     String?           @map("idempotency_key")
   cancellationReason String?           @map("cancellation_reason")
   cancelledAt        DateTime?         @map("cancelled_at")
   cancelledById      String?           @map("cancelled_by_id")
@@ -494,6 +531,7 @@ model Appointment {
   @@index([establishmentId, employeeId, startAt])
   @@index([establishmentId, startAt])
   @@index([clientId, startAt])
+  @@unique([establishmentId, idempotencyKey])
   @@map("appointments")
 }
 

@@ -158,6 +158,16 @@ describe('CreateAppointmentUseCase', () => {
     expect(appointmentRepository.createIfAvailable).not.toHaveBeenCalled();
   });
 
+  it('passes idempotencyKey through to the repository when set (Fase 24 integration API)', async () => {
+    const { useCase, appointmentRepository } = build();
+
+    await useCase.execute({ ...input, idempotencyKey: 'idem-123' });
+
+    expect(appointmentRepository.createIfAvailable).toHaveBeenCalledWith(
+      expect.objectContaining({ idempotencyKey: 'idem-123' }),
+    );
+  });
+
   it('propagates SlotNotAvailableError from the repository', async () => {
     const { useCase } = build({
       appointmentRepository: {

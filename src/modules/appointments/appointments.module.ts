@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { EmployeesModule } from '../employees/employees.module';
 import { ServicesModule } from '../services/services.module';
+import { AgendaBlocksModule } from '../agenda-blocks/agenda-blocks.module';
 import { AppointmentRepositoryPort } from './domain/appointment.repository.port';
 import { PrismaAppointmentRepository } from './infrastructure/persistence/prisma-appointment.repository';
 import { GetAvailableSlotsUseCase } from './application/use-cases/get-available-slots.use-case';
@@ -16,7 +17,7 @@ import { ExportAppointmentsUseCase } from './application/use-cases/export-appoin
 import { AppointmentsController } from './presentation/appointments.controller';
 
 @Module({
-  imports: [EmployeesModule, ServicesModule],
+  imports: [EmployeesModule, ServicesModule, AgendaBlocksModule],
   controllers: [AppointmentsController],
   providers: [
     { provide: AppointmentRepositoryPort, useClass: PrismaAppointmentRepository },
@@ -31,7 +32,15 @@ import { AppointmentsController } from './presentation/appointments.controller';
     CheckInAppointmentUseCase,
     ExportAppointmentsUseCase,
   ],
-  // GetAvailableSlots is re-exported for the public booking flow in PublicModule.
-  exports: [AppointmentRepositoryPort, GetAvailableSlotsUseCase],
+  // GetAvailableSlots is re-exported for the public booking flow in PublicModule; the other
+  // four are re-exported for Fase 24's IntegrationsModule (machine-to-machine appointment API).
+  exports: [
+    AppointmentRepositoryPort,
+    GetAvailableSlotsUseCase,
+    CreateAppointmentUseCase,
+    ListAppointmentsUseCase,
+    CancelAppointmentUseCase,
+    RescheduleAppointmentUseCase,
+  ],
 })
 export class AppointmentsModule {}

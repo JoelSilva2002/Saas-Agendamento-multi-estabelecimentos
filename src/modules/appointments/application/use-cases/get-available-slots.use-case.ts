@@ -7,6 +7,7 @@ import { EmployeeScheduleRepositoryPort } from '../../../employees/domain/employ
 import { EmployeeTimeOffRepositoryPort } from '../../../employees/domain/employee-time-off.repository.port';
 import { BusinessHoursRepositoryPort } from '../../../establishments/domain/business-hours.repository.port';
 import { EstablishmentRepositoryPort } from '../../../establishments/domain/establishment.repository.port';
+import { AgendaBlockRepositoryPort } from '../../../agenda-blocks/domain/agenda-block.repository.port';
 import { AppointmentRepositoryPort } from '../../domain/appointment.repository.port';
 import { EmployeeNotEligibleForServiceError } from '../../domain/errors/appointment-errors';
 import {
@@ -41,6 +42,7 @@ export class GetAvailableSlotsUseCase {
     private readonly timeOffRepository: EmployeeTimeOffRepositoryPort,
     private readonly appointmentRepository: AppointmentRepositoryPort,
     private readonly establishmentRepository: EstablishmentRepositoryPort,
+    private readonly agendaBlockRepository: AgendaBlockRepositoryPort,
   ) {}
 
   async execute(input: GetAvailableSlotsInput): Promise<AvailableSlot[]> {
@@ -65,8 +67,10 @@ export class GetAvailableSlotsUseCase {
     }
 
     const weekday = new Date(`${input.date}T00:00:00.000Z`).getUTCDay();
+    const dayStart = new Date(`${input.date}T00:00:00.000Z`);
+    const dayEnd = new Date(`${input.date}T23:59:59.999Z`);
 
-    const [businessHoursDays, scheduleSlots, timeOffEntries, busyRanges, timeZone] =
+    const [businessHoursDays, scheduleSlots, timeOffEntries, busyRanges, timeZone, agendaBlocks] =
       await Promise.all([
         this.businessHoursRepository.findAllByEstablishment(input.establishmentId),
         this.scheduleRepository.findAllByEmployee(input.employeeId),
@@ -77,12 +81,11 @@ export class GetAvailableSlotsUseCase {
           input.excludeAppointmentId,
         ),
         this.establishmentRepository.getTimeZone(input.establishmentId),
+        this.agendaBlockRepository.findMany(input.establishmentId, { fromDate: dayStart, toDate: dayEnd }),
       ]);
 
     const businessHoursDay = businessHoursDays.find((day) => day.weekday === weekday);
     const daySlots = scheduleSlots.filter((slot) => slot.weekday === weekday);
-    const dayStart = new Date(`${input.date}T00:00:00.000Z`);
-    const dayEnd = new Date(`${input.date}T23:59:59.999Z`);
 
     const timeOffRanges: TimeRange[] = timeOffEntries
       .filter((entry) => entry.startAt < dayEnd && entry.endAt > dayStart)
@@ -92,6 +95,13 @@ export class GetAvailableSlotsUseCase {
       start: new Date(range.startAt.getTime() - range.bufferBeforeMinutes * 60_000),
       end: new Date(range.endAt.getTime() + range.bufferAfterMinutes * 60_000),
     }));
+
+    // Manual blocks (see AgendaBlocksModule) — either scoped to this employee or, when
+    // employeeId is null on the block, to every professional. No service buffer applies (a
+    // block isn't a service occupying time, just time the manager took off the table).
+    const blockRanges: TimeRange[] = agendaBlocks
+      .filter((block) => block.employeeId === null || block.employeeId === input.employeeId)
+      .map((block) => ({ start: block.startAt, end: block.endAt }));
 
     return AvailabilityCalculator.computeAvailableSlots({
       date: input.date,
@@ -106,7 +116,7 @@ export class GetAvailableSlotsUseCase {
       workingSlots: daySlots.filter((slot) => slot.slotType === 'working'),
       breakSlots: daySlots.filter((slot) => slot.slotType === 'break'),
       timeOffRanges,
-      busyRanges: expandedBusyRanges,
+      busyRanges: [...expandedBusyRanges, ...blockRanges],
       durationMinutes: service.durationMinutes,
       bufferBeforeMinutes: service.bufferBeforeMinutes,
       bufferAfterMinutes: service.bufferAfterMinutes,

@@ -6,6 +6,8 @@ import { EstablishmentRepositoryPort } from '../../../establishments/domain/esta
 import { EmployeeScheduleRepositoryPort } from '../../../employees/domain/employee-schedule.repository.port';
 import { EmployeeTimeOffRepositoryPort } from '../../../employees/domain/employee-time-off.repository.port';
 import { AppointmentRepositoryPort } from '../../domain/appointment.repository.port';
+import { AgendaBlockRepositoryPort } from '../../../agenda-blocks/domain/agenda-block.repository.port';
+import { AgendaBlock } from '../../../agenda-blocks/domain/entities/agenda-block.entity';
 import { Service } from '../../../services/domain/entities/service.entity';
 import { Employee } from '../../../employees/domain/entities/employee.entity';
 import { BusinessHoursDay } from '../../../establishments/domain/entities/business-hours-day.entity';
@@ -37,6 +39,7 @@ describe('GetAvailableSlotsUseCase', () => {
     timeOffRepository?: Partial<EmployeeTimeOffRepositoryPort>;
     appointmentRepository?: Partial<AppointmentRepositoryPort>;
     serviceRepository?: Partial<ServiceRepositoryPort>;
+    agendaBlockRepository?: Partial<AgendaBlockRepositoryPort>;
   }) {
     const serviceRepository: ServiceRepositoryPort = {
       findById: jest.fn().mockResolvedValue(service),
@@ -77,6 +80,11 @@ describe('GetAvailableSlotsUseCase', () => {
       getTimeZone: jest.fn().mockResolvedValue('UTC'),
     } as unknown as EstablishmentRepositoryPort;
 
+    const agendaBlockRepository: AgendaBlockRepositoryPort = {
+      findMany: jest.fn().mockResolvedValue([]),
+      ...overrides?.agendaBlockRepository,
+    } as unknown as AgendaBlockRepositoryPort;
+
     return {
       useCase: new GetAvailableSlotsUseCase(
         serviceRepository,
@@ -86,6 +94,7 @@ describe('GetAvailableSlotsUseCase', () => {
         timeOffRepository,
         appointmentRepository,
         establishmentRepository,
+        agendaBlockRepository,
       ),
     };
   }
@@ -121,6 +130,75 @@ describe('GetAvailableSlotsUseCase', () => {
       (s) => s.startAt < new Date(`${DATE}T10:30:00.000Z`) && s.endAt > new Date(`${DATE}T10:00:00.000Z`),
     );
     expect(overlapsBusy).toBe(false);
+  });
+
+  it('excludes a manual agenda block scoped to this employee', async () => {
+    const { useCase } = build({
+      agendaBlockRepository: {
+        findMany: jest.fn().mockResolvedValue([
+          AgendaBlock.create({
+            id: 'block-1',
+            establishmentId: 'establishment-1',
+            employeeId: 'employee-1',
+            startAt: new Date(`${DATE}T14:00:00.000Z`),
+            endAt: new Date(`${DATE}T15:00:00.000Z`),
+            createdById: 'staff-1',
+          }),
+        ]),
+      },
+    });
+
+    const slots = await useCase.execute(input);
+    const overlapsBlock = slots.some(
+      (s) => s.startAt < new Date(`${DATE}T15:00:00.000Z`) && s.endAt > new Date(`${DATE}T14:00:00.000Z`),
+    );
+    expect(overlapsBlock).toBe(false);
+  });
+
+  it('excludes an establishment-wide agenda block (employeeId null) regardless of which employee is queried', async () => {
+    const { useCase } = build({
+      agendaBlockRepository: {
+        findMany: jest.fn().mockResolvedValue([
+          AgendaBlock.create({
+            id: 'block-1',
+            establishmentId: 'establishment-1',
+            employeeId: null,
+            startAt: new Date(`${DATE}T14:00:00.000Z`),
+            endAt: new Date(`${DATE}T15:00:00.000Z`),
+            createdById: 'staff-1',
+          }),
+        ]),
+      },
+    });
+
+    const slots = await useCase.execute(input);
+    const overlapsBlock = slots.some(
+      (s) => s.startAt < new Date(`${DATE}T15:00:00.000Z`) && s.endAt > new Date(`${DATE}T14:00:00.000Z`),
+    );
+    expect(overlapsBlock).toBe(false);
+  });
+
+  it('does not exclude a block scoped to a different employee', async () => {
+    const { useCase } = build({
+      agendaBlockRepository: {
+        findMany: jest.fn().mockResolvedValue([
+          AgendaBlock.create({
+            id: 'block-1',
+            establishmentId: 'establishment-1',
+            employeeId: 'some-other-employee',
+            startAt: new Date(`${DATE}T14:00:00.000Z`),
+            endAt: new Date(`${DATE}T15:00:00.000Z`),
+            createdById: 'staff-1',
+          }),
+        ]),
+      },
+    });
+
+    const slots = await useCase.execute(input);
+    const overlapsBlock = slots.some(
+      (s) => s.startAt < new Date(`${DATE}T15:00:00.000Z`) && s.endAt > new Date(`${DATE}T14:00:00.000Z`),
+    );
+    expect(overlapsBlock).toBe(true);
   });
 
   it('throws EmployeeNotEligibleForServiceError when the employee cannot perform the service', async () => {

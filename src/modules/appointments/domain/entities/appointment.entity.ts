@@ -20,6 +20,8 @@ export interface AppointmentProps {
   status: AppointmentStatus;
   priceCents: number;
   isFitIn: boolean;
+  /** Integration API dedupe key (Fase 24) — null for every non-integration booking path. */
+  idempotencyKey: string | null;
   cancellationReason: string | null;
   cancelledAt: Date | null;
   cancelledById: string | null;
@@ -39,6 +41,7 @@ export interface CreateAppointmentProps {
   endAt: Date;
   priceCents: number;
   isFitIn?: boolean;
+  idempotencyKey?: string;
   createdById: string;
 }
 
@@ -65,6 +68,7 @@ export class Appointment {
       status: 'pending',
       priceCents: props.priceCents,
       isFitIn: props.isFitIn ?? false,
+      idempotencyKey: props.idempotencyKey ?? null,
       cancellationReason: null,
       cancelledAt: null,
       cancelledById: null,
@@ -117,6 +121,10 @@ export class Appointment {
 
   get isFitIn(): boolean {
     return this.props.isFitIn;
+  }
+
+  get idempotencyKey(): string | null {
+    return this.props.idempotencyKey;
   }
 
   get cancellationReason(): string | null {

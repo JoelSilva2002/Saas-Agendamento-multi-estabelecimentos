@@ -18,5 +18,8 @@ declare module 'express' {
   interface Request {
     user?: AuthenticatedUser;
     tenantContext?: TenantContext;
+    // Set by IntegrationAuthGuard only (Fase 24) — which ApiKey authenticated this request,
+    // for idempotency-key scoping and last-used bookkeeping.
+    apiKeyId?: string;
   }
 }

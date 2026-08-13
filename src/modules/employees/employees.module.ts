@@ -36,6 +36,12 @@ import { EmployeesController } from './presentation/employees.controller';
     ListEmployeeTimeOffUseCase,
     RemoveEmployeeTimeOffUseCase,
   ],
-  exports: [EmployeeRepositoryPort, EmployeeScheduleRepositoryPort, EmployeeTimeOffRepositoryPort],
+  // ListEmployeesUseCase is re-exported for Fase 24's IntegrationsModule.
+  exports: [
+    EmployeeRepositoryPort,
+    EmployeeScheduleRepositoryPort,
+    EmployeeTimeOffRepositoryPort,
+    ListEmployeesUseCase,
+  ],
 })
 export class EmployeesModule {}

@@ -22,6 +22,9 @@ export interface CreateAppointmentIfAvailableParams {
   bufferBeforeMinutes: number;
   bufferAfterMinutes: number;
   isFitIn: boolean;
+  /** Integration API dedupe key (Fase 24) — see CreateAppointmentIfAvailableParams's caller
+   * (IntegrationsController) for the check-first/catch-conflict flow this backs. */
+  idempotencyKey?: string;
   createdById: string;
 }
 
@@ -72,6 +75,14 @@ export abstract class AppointmentRepositoryPort {
   ): Promise<Appointment>;
 
   abstract findById(id: string, establishmentId: string): Promise<Appointment | null>;
+
+  /** Backs the integration API's idempotency check (Fase 24) — a request carrying an
+   * Idempotency-Key already seen for this establishment returns the original appointment
+   * instead of creating a duplicate. */
+  abstract findByIdempotencyKey(
+    establishmentId: string,
+    idempotencyKey: string,
+  ): Promise<Appointment | null>;
 
   abstract findMany(
     establishmentId: string,

@@ -22,6 +22,8 @@ export interface CreateAppointmentInput {
   /** When true, skips the availability/overlap check entirely (still requires the service
    * and employee to exist and the employee to be eligible for the service). */
   isFitIn?: boolean;
+  /** Integration API dedupe key (Fase 24) — see IntegrationsController. */
+  idempotencyKey?: string;
   createdById: string;
 }
 
@@ -71,6 +73,7 @@ export class CreateAppointmentUseCase {
       bufferBeforeMinutes: service.bufferBeforeMinutes,
       bufferAfterMinutes: service.bufferAfterMinutes,
       isFitIn: input.isFitIn ?? false,
+      idempotencyKey: input.idempotencyKey,
       createdById: input.createdById,
     });
 

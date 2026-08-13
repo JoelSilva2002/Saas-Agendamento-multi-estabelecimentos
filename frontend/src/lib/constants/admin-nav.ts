@@ -4,6 +4,7 @@ import {
   CalendarDays,
   Clock,
   CreditCard,
+  KeyRound,
   LayoutDashboard,
   Palette,
   Scissors,
@@ -64,6 +65,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
       { title: "Estabelecimento", url: "/admin/configuracoes", icon: Settings },
       { title: "Minha Conta", url: "/admin/configuracoes/conta", icon: UserRound },
       { title: "Tema", url: "/admin/configuracoes/tema", icon: Palette },
+      { title: "Integrações", url: "/admin/configuracoes/integracoes", icon: KeyRound },
     ],
   },
 ];
