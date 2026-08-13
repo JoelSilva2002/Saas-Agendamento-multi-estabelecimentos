@@ -11,6 +11,14 @@ export interface EstablishmentAddress {
   country: string;
 }
 
+/** Two FileStoragePort keys that always move together — the full-size image and its thumbnail.
+ * Never a URL: the entity/repository layer only ever knows the opaque storage key, and the URL
+ * is composed at the presentation boundary from FileStoragePort.publicUrl(). */
+export interface EstablishmentLogo {
+  storageKey: string;
+  thumbStorageKey: string;
+}
+
 export interface EstablishmentProps {
   id: string;
   tenantId: string;
@@ -18,6 +26,8 @@ export interface EstablishmentProps {
   slug: string;
   /** Free-text presentation shown to clients browsing the public directory. */
   description: string | null;
+  /** Uploaded separately via EstablishmentMediaController — never set at creation. */
+  logo: EstablishmentLogo | null;
   timezone: string;
   address: EstablishmentAddress;
   phones: string[];
@@ -102,6 +112,7 @@ export class Establishment {
       name: props.name.trim(),
       slug: props.slug.trim(),
       description: props.description?.trim() || null,
+      logo: null,
       timezone: props.timezone ?? 'UTC',
       address: {
         street: props.address?.street ?? null,
@@ -177,6 +188,14 @@ export class Establishment {
     }
   }
 
+  /** Both keys or neither — a logo can't have a full image without its thumbnail (or vice
+   * versa); UploadEstablishmentLogoUseCase always writes both before persisting. */
+  private static assertValidLogo(logo: EstablishmentLogo | null): void {
+    if (logo && (!logo.storageKey?.trim() || !logo.thumbStorageKey?.trim())) {
+      throw new ValidationError('logo requer storageKey e thumbStorageKey preenchidos');
+    }
+  }
+
   static fromPersistence(props: EstablishmentProps): Establishment {
     return new Establishment(props);
   }
@@ -199,6 +218,10 @@ export class Establishment {
 
   get description(): string | null {
     return this.props.description;
+  }
+
+  get logo(): EstablishmentLogo | null {
+    return this.props.logo;
   }
 
   get timezone(): string {
@@ -253,6 +276,7 @@ export class Establishment {
     name?: string;
     slug?: string;
     description?: string | null;
+    logo?: EstablishmentLogo | null;
     timezone?: string;
     address?: Partial<EstablishmentAddress>;
     phones?: string[];
@@ -308,6 +332,9 @@ export class Establishment {
       'o sinal/depósito',
     );
 
+    const logo = changes.logo !== undefined ? changes.logo : this.props.logo;
+    Establishment.assertValidLogo(logo);
+
     return new Establishment({
       ...this.props,
       name,
@@ -318,6 +345,7 @@ export class Establishment {
         changes.description !== undefined
           ? changes.description?.trim() || null
           : this.props.description,
+      logo,
       timezone: changes.timezone ?? this.props.timezone,
       address: changes.address ? { ...this.props.address, ...changes.address } : this.props.address,
       phones: changes.phones ?? this.props.phones,

@@ -64,6 +64,10 @@ model Establishment {
   // Free-text presentation shown to clients in the public directory and on the establishment
   // page, so they know what the place does before opening it. Optional.
   description String? @db.Text
+  // Logo (Fase 26): two FileStoragePort keys, never a URL — never bake the storage adapter's
+  // host into a row. Both null or both set; see Establishment.assertValidLogo().
+  logoStorageKey      String? @map("logo_storage_key")
+  logoThumbStorageKey String? @map("logo_thumb_storage_key")
   // IANA zone the establishment operates in. Business hours and employee schedules are stored
   // as bare "HH:mm" wall-clock strings and are only resolved to instants against this.
   timezone  String    @default("America/Sao_Paulo")
@@ -118,6 +122,7 @@ model Establishment {
   coupons                Coupon[]
   clientProfiles         ClientProfile[]
   apiKeys                ApiKey[]
+  photos                 EstablishmentPhoto[]
 
   @@index([tenantId])
   @@index([addressCity])
@@ -138,6 +143,29 @@ model EstablishmentBusinessHours {
 
   @@unique([establishmentId, weekday])
   @@map("establishment_business_hours")
+}
+
+model EstablishmentPhoto {
+  id              String   @id @default(uuid())
+  establishmentId String   @map("establishment_id")
+  storageKey      String   @map("storage_key")
+  thumbStorageKey String   @map("thumb_storage_key")
+  width           Int
+  height          Int
+  byteSize        Int      @map("byte_size")
+  caption         String?  @db.Text
+  // Display order in the public gallery. Deliberately no @@unique([establishmentId, position]):
+  // unlike weekday above (a natural key), position is a sort key rewritten wholesale by the
+  // reorder endpoint — a same-transaction renumber would collide against an immediate unique
+  // index mid-flight. Nothing ever looks a photo up by position, so the constraint buys nothing.
+  position  Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  establishment Establishment @relation(fields: [establishmentId], references: [id], onDelete: Cascade)
+
+  @@index([establishmentId, position])
+  @@map("establishment_photos")
 }
 
 enum ThemePreference {

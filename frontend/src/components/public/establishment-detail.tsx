@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock, MapPin, Phone, Star } from "lucide-react";
+import { ArrowLeft, ArrowRight, Clock, MapPin, Phone, Star } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -8,6 +8,7 @@ import { formatAddress } from "@/components/public/establishment-card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api/client";
 import { getEstablishment, listServices } from "@/lib/public/api";
@@ -22,6 +23,7 @@ export function EstablishmentDetail({ slug }: { slug: string }) {
   const [services, setServices] = useState<PublicService[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | undefined>();
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -53,6 +55,7 @@ export function EstablishmentDetail({ slug }: { slug: string }) {
       <section className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-10">
         <Skeleton className="h-9 w-72" />
         <Skeleton className="h-5 w-96" />
+        <Skeleton className="h-40 w-full" />
         <Skeleton className="h-56 w-full" />
       </section>
     );
@@ -72,41 +75,76 @@ export function EstablishmentDetail({ slug }: { slug: string }) {
   }
 
   const address = formatAddress(establishment.address);
+  const photos = establishment.photos;
 
   return (
     <section className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-10">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-semibold tracking-tight">{establishment.name}</h1>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-          <span className="flex items-center gap-1">
-            <MapPin className="size-4" />
-            {address ?? "Endereço não informado"}
-          </span>
-          <span className="flex items-center gap-1">
-            <Star
-              className={
-                establishment.rating.count > 0
-                  ? "size-4 fill-yellow-400 text-yellow-400"
-                  : "size-4"
-              }
-            />
-            {establishment.rating.count > 0
-              ? `${establishment.rating.average.toFixed(1)} (${establishment.rating.count})`
-              : "Sem avaliações ainda"}
-          </span>
-          {establishment.phones.length > 0 && (
+      <div className="flex items-start gap-4">
+        {establishment.logoUrl && (
+          // eslint-disable-next-line @next/next/no-img-element -- already resized/converted server-side, see Fase 26 plan
+          <img
+            src={establishment.logoUrl}
+            alt=""
+            className="size-20 shrink-0 rounded-xl border object-cover"
+          />
+        )}
+        <div className="flex flex-col gap-2">
+          <h1 className="text-3xl font-semibold tracking-tight">{establishment.name}</h1>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
             <span className="flex items-center gap-1">
-              <Phone className="size-4" />
-              {establishment.phones.join(" · ")}
+              <MapPin className="size-4" />
+              {address ?? "Endereço não informado"}
             </span>
+            <span className="flex items-center gap-1">
+              <Star
+                className={
+                  establishment.rating.count > 0
+                    ? "size-4 fill-yellow-400 text-yellow-400"
+                    : "size-4"
+                }
+              />
+              {establishment.rating.count > 0
+                ? `${establishment.rating.average.toFixed(1)} (${establishment.rating.count})`
+                : "Sem avaliações ainda"}
+            </span>
+            {establishment.phones.length > 0 && (
+              <span className="flex items-center gap-1">
+                <Phone className="size-4" />
+                {establishment.phones.join(" · ")}
+              </span>
+            )}
+          </div>
+          {establishment.description && (
+            <p className="max-w-2xl whitespace-pre-line text-muted-foreground">
+              {establishment.description}
+            </p>
           )}
         </div>
-        {establishment.description && (
-          <p className="max-w-2xl whitespace-pre-line text-muted-foreground">
-            {establishment.description}
-          </p>
-        )}
       </div>
+
+      {photos.length > 0 && (
+        // Static grid, not a carousel: no carousel primitive exists in this project, and a
+        // grid reads better for SEO with the small photo counts this feature allows (≤12).
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {photos.map((photo, index) => (
+            <button
+              key={photo.id}
+              type="button"
+              onClick={() => setLightboxIndex(index)}
+              className="relative aspect-square overflow-hidden rounded-lg border"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element -- see note above */}
+              <img
+                src={photo.thumbUrl}
+                alt={photo.caption ?? ""}
+                loading="lazy"
+                decoding="async"
+                className="size-full object-cover transition-transform hover:scale-105"
+              />
+            </button>
+          ))}
+        </div>
+      )}
 
       <Card>
         <CardHeader>
@@ -144,6 +182,46 @@ export function EstablishmentDetail({ slug }: { slug: string }) {
           <Link href={`/${slug}/agendar`}>Agendar horário</Link>
         </Button>
       )}
+
+      <Dialog open={lightboxIndex !== null} onOpenChange={(open) => !open && setLightboxIndex(null)}>
+        <DialogContent className="max-w-3xl p-0" showCloseButton>
+          <DialogTitle className="sr-only">
+            Foto {lightboxIndex !== null ? lightboxIndex + 1 : ""} de {establishment.name}
+          </DialogTitle>
+          {lightboxIndex !== null && photos[lightboxIndex] && (
+            <div className="relative">
+              {/* eslint-disable-next-line @next/next/no-img-element -- see note above */}
+              <img
+                src={photos[lightboxIndex].url}
+                alt={photos[lightboxIndex].caption ?? ""}
+                className="max-h-[80vh] w-full rounded-lg object-contain"
+              />
+              {photos.length > 1 && (
+                <div className="absolute inset-x-0 bottom-3 flex justify-center gap-2">
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="secondary"
+                    onClick={() => setLightboxIndex((i) => (i! - 1 + photos.length) % photos.length)}
+                    aria-label="Foto anterior"
+                  >
+                    <ArrowLeft className="size-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="secondary"
+                    onClick={() => setLightboxIndex((i) => (i! + 1) % photos.length)}
+                    aria-label="Próxima foto"
+                  >
+                    <ArrowRight className="size-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

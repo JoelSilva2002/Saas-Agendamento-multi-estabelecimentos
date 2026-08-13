@@ -249,6 +249,18 @@ export function BookingWizard({ establishmentSlug }: { establishmentSlug: string
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-6 sm:py-10">
+      {/* This is a conversion funnel, not a marketing page — just logo + name, nothing more. */}
+      <div className="flex items-center gap-3">
+        {establishment?.logoThumbUrl && (
+          // eslint-disable-next-line @next/next/no-img-element -- already resized/converted server-side, see Fase 26 plan
+          <img
+            src={establishment.logoThumbUrl}
+            alt=""
+            className="size-10 shrink-0 rounded-md border object-cover"
+          />
+        )}
+        {establishment && <span className="font-medium">{establishment.name}</span>}
+      </div>
       <WizardProgress step={step} />
       <form
         onSubmit={(e) => {

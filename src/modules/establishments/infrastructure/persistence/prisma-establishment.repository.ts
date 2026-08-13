@@ -50,6 +50,8 @@ export class PrismaEstablishmentRepository implements EstablishmentRepositoryPor
         name: props.name,
         slug: props.slug,
         description: props.description,
+        logoStorageKey: props.logoStorageKey,
+        logoThumbStorageKey: props.logoThumbStorageKey,
         timezone: props.timezone,
         addressStreet: props.addressStreet,
         addressNumber: props.addressNumber,

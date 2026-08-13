@@ -8,6 +8,9 @@ import { ListEligibleEmployeesUseCase } from '../../services/application/use-cas
 import { GetAvailableSlotsUseCase } from '../../appointments/application/use-cases/get-available-slots.use-case';
 import { GetReviewSummaryUseCase } from '../../reviews/application/use-cases/get-review-summary.use-case';
 import { UserRepositoryPort } from '../../users/domain/user.repository.port';
+import { EstablishmentPhotoRepositoryPort } from '../../establishments/domain/establishment-photo.repository.port';
+import { EstablishmentPhoto } from '../../establishments/domain/entities/establishment-photo.entity';
+import { FileStoragePort } from '../../../shared-kernel/domain/file-storage.port';
 import { SearchEstablishmentsRequestDto } from './dto/search-establishments.request.dto';
 import { PublicAvailabilityRequestDto } from './dto/public-availability.request.dto';
 
@@ -30,6 +33,8 @@ export class PublicController {
     private readonly getAvailableSlots: GetAvailableSlotsUseCase,
     private readonly getReviewSummary: GetReviewSummaryUseCase,
     private readonly userRepository: UserRepositoryPort,
+    private readonly photoRepository: EstablishmentPhotoRepositoryPort,
+    private readonly storage: FileStoragePort,
   ) {}
 
   @Get('cities')
@@ -49,11 +54,18 @@ export class PublicController {
   @Get('establishments/:slug')
   async detail(@Param('slug') slug: string) {
     const establishment = await this.resolveBySlug(slug);
-    const summary = await this.getReviewSummary.execute(establishment.id);
+    // Gallery is fetched only for the detail page, deliberately not in search() below — adding
+    // it to the list would take the review-summary N+1 already there from 1 to 2 queries per
+    // establishment for a grid with no room to show photos anyway.
+    const [summary, photos] = await Promise.all([
+      this.getReviewSummary.execute(establishment.id),
+      this.photoRepository.findAllByEstablishment(establishment.id),
+    ]);
     return {
       ...this.toBaseResponse(establishment),
       rating: { average: summary.average, count: summary.count },
       cancellationMinHoursNotice: establishment.cancellationMinHoursNotice,
+      photos: photos.map((photo) => this.toPhotoResponse(photo)),
     };
   }
 
@@ -118,15 +130,28 @@ export class PublicController {
   /** tenantId/establishmentId are included because the booking flow has to post back to the
    * tenant-scoped appointment route once the client signs in. */
   private toBaseResponse(establishment: Establishment) {
+    const logo = establishment.logo;
     return {
       tenantId: establishment.tenantId,
       establishmentId: establishment.id,
       name: establishment.name,
       slug: establishment.slug,
       description: establishment.description,
+      logoUrl: logo ? this.storage.publicUrl(logo.storageKey) : null,
+      logoThumbUrl: logo ? this.storage.publicUrl(logo.thumbStorageKey) : null,
       timezone: establishment.timezone,
       address: establishment.address,
       phones: establishment.phones,
+    };
+  }
+
+  private toPhotoResponse(photo: EstablishmentPhoto) {
+    return {
+      id: photo.id,
+      url: this.storage.publicUrl(photo.storageKey),
+      thumbUrl: this.storage.publicUrl(photo.thumbStorageKey),
+      caption: photo.caption,
+      position: photo.position,
     };
   }
 

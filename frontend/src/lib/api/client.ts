@@ -51,11 +51,15 @@ function handleSessionExpired(): void {
 
 export async function apiFetch<T>(path: string, init?: RequestInit, isRetry = false): Promise<T> {
   const accessToken = getAccessToken();
+  const isFormData = typeof FormData !== "undefined" && init?.body instanceof FormData;
 
   const res = await fetch(`${API_URL}${path}`, {
     ...init,
     headers: {
-      "Content-Type": "application/json",
+      // With FormData the browser must set Content-Type itself — it has to append the
+      // multipart boundary, and any value we set here (including undefined, which stringifies
+      // to "undefined") makes the request unparseable server-side.
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       ...init?.headers,
     },

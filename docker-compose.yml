@@ -22,9 +22,15 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://agendasaas:agendasaas@postgres:5432/agendasaas
+      MEDIA_STORAGE_ROOT: /app/uploads
     ports:
       - "3000:3000"
+    volumes:
+      # Without this, the local-disk FileStoragePort adapter writes into the container's
+      # writable layer and every uploaded logo/photo is lost on the next `docker compose up`.
+      - media-uploads:/app/uploads
     profiles: ["full"]
 
 volumes:
   pgdata:
+  media-uploads:

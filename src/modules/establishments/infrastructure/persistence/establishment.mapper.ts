@@ -9,6 +9,10 @@ export class EstablishmentMapper {
       name: record.name,
       slug: record.slug,
       description: record.description,
+      logo:
+        record.logoStorageKey && record.logoThumbStorageKey
+          ? { storageKey: record.logoStorageKey, thumbStorageKey: record.logoThumbStorageKey }
+          : null,
       timezone: record.timezone,
       address: {
         street: record.addressStreet,
@@ -43,6 +47,8 @@ export class EstablishmentMapper {
       name: props.name,
       slug: props.slug,
       description: props.description,
+      logoStorageKey: props.logo?.storageKey ?? null,
+      logoThumbStorageKey: props.logo?.thumbStorageKey ?? null,
       timezone: props.timezone,
       addressStreet: props.address.street,
       addressNumber: props.address.number,

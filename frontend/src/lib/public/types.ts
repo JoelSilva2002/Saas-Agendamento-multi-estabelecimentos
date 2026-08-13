@@ -20,14 +20,25 @@ export type PublicEstablishment = {
   name: string;
   slug: string;
   description: string | null;
+  logoUrl: string | null;
+  logoThumbUrl: string | null;
   timezone: string;
   address: PublicAddress;
   phones: string[];
   rating: PublicRating;
 };
 
+export type PublicPhoto = {
+  id: string;
+  url: string;
+  thumbUrl: string;
+  caption: string | null;
+  position: number;
+};
+
 export type PublicEstablishmentDetail = PublicEstablishment & {
   cancellationMinHoursNotice: number;
+  photos: PublicPhoto[];
 };
 
 export type PublicService = {

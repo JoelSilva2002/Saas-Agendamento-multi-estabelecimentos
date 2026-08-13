@@ -16,6 +16,8 @@ export type Establishment = {
   slug: string;
   /** Free-text presentation shown to clients. */
   description: string | null;
+  logoUrl: string | null;
+  logoThumbUrl: string | null;
   timezone: string;
   address: EstablishmentAddress;
   phones: string[];
@@ -54,4 +56,15 @@ export type BusinessHoursDay = {
   isClosed: boolean;
   openTime: string | null;
   closeTime: string | null;
+};
+
+export type EstablishmentPhoto = {
+  id: string;
+  url: string;
+  thumbUrl: string;
+  width: number;
+  height: number;
+  caption: string | null;
+  position: number;
+  createdAt: string;
 };

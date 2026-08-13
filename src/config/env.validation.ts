@@ -36,4 +36,11 @@ export const envValidationSchema = Joi.object({
     then: Joi.required(),
     otherwise: Joi.optional(),
   }),
+
+  // All optional, zero-config defaults — see configuration.ts. MEDIA_STORAGE_ROOT defaults to
+  // ./uploads under the process cwd; MEDIA_PUBLIC_BASE_URL defaults to this API's own origin.
+  MEDIA_STORAGE_ROOT: Joi.string().optional(),
+  MEDIA_PUBLIC_BASE_URL: Joi.string().uri().optional(),
+  MEDIA_MAX_UPLOAD_BYTES: Joi.number().default(5242880),
+  MEDIA_MAX_GALLERY_PHOTOS: Joi.number().default(12),
 });

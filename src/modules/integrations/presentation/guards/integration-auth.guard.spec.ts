@@ -26,6 +26,7 @@ describe('IntegrationAuthGuard', () => {
     name: 'Studio Beleza',
     slug: 'studio-beleza',
     description: null,
+    logo: null,
     timezone: 'America/Sao_Paulo',
     address: {
       street: null,

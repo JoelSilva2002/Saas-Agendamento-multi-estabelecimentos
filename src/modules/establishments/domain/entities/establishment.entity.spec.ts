@@ -191,4 +191,63 @@ describe('Establishment', () => {
       expect(updated.depositPercentage).toBeNull();
     });
   });
+
+  describe('logo', () => {
+    const logo = { storageKey: 'establishments/t/e/logo/abc.webp', thumbStorageKey: 'establishments/t/e/logo/abc_thumb.webp' };
+
+    it('starts null on create()', () => {
+      const establishment = Establishment.create({
+        id: '1',
+        tenantId: 'tenant-1',
+        name: 'Filial',
+        slug: 'filial',
+      });
+      expect(establishment.logo).toBeNull();
+    });
+
+    it('update() sets the logo', () => {
+      const establishment = Establishment.create({
+        id: '1',
+        tenantId: 'tenant-1',
+        name: 'Filial',
+        slug: 'filial',
+      });
+      const updated = establishment.update({ logo });
+      expect(updated.logo).toEqual(logo);
+    });
+
+    it('update() with logo omitted preserves the current logo', () => {
+      const establishment = Establishment.create({
+        id: '1',
+        tenantId: 'tenant-1',
+        name: 'Filial',
+        slug: 'filial',
+      }).update({ logo });
+      const updated = establishment.update({ name: 'Filial Renovada' });
+      expect(updated.logo).toEqual(logo);
+    });
+
+    it('update() with logo: null clears it', () => {
+      const establishment = Establishment.create({
+        id: '1',
+        tenantId: 'tenant-1',
+        name: 'Filial',
+        slug: 'filial',
+      }).update({ logo });
+      const updated = establishment.update({ logo: null });
+      expect(updated.logo).toBeNull();
+    });
+
+    it('rejects a logo missing its thumbStorageKey', () => {
+      const establishment = Establishment.create({
+        id: '1',
+        tenantId: 'tenant-1',
+        name: 'Filial',
+        slug: 'filial',
+      });
+      expect(() =>
+        establishment.update({ logo: { storageKey: 'abc.webp', thumbStorageKey: '' } }),
+      ).toThrow(ValidationError);
+    });
+  });
 });

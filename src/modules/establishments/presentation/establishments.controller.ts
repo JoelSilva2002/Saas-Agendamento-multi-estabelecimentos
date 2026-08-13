@@ -23,6 +23,7 @@ import { SetBusinessHoursRequestDto } from './dto/set-business-hours.request.dto
 import { Auth } from '../../auth/presentation/decorators/auth.decorator';
 import { Establishment } from '../domain/entities/establishment.entity';
 import { BusinessHoursDay } from '../domain/entities/business-hours-day.entity';
+import { FileStoragePort } from '../../../shared-kernel/domain/file-storage.port';
 
 @Controller('tenants/:tenantId/establishments')
 export class EstablishmentsController {
@@ -34,6 +35,7 @@ export class EstablishmentsController {
     private readonly deleteEstablishment: DeleteEstablishmentUseCase,
     private readonly setBusinessHours: SetBusinessHoursUseCase,
     private readonly getBusinessHours: GetBusinessHoursUseCase,
+    private readonly storage: FileStoragePort,
   ) {}
 
   @Post()
@@ -104,12 +106,15 @@ export class EstablishmentsController {
   }
 
   private toResponse(establishment: Establishment) {
+    const logo = establishment.logo;
     return {
       id: establishment.id,
       tenantId: establishment.tenantId,
       name: establishment.name,
       slug: establishment.slug,
       description: establishment.description,
+      logoUrl: logo ? this.storage.publicUrl(logo.storageKey) : null,
+      logoThumbUrl: logo ? this.storage.publicUrl(logo.thumbStorageKey) : null,
       timezone: establishment.timezone,
       address: establishment.address,
       phones: establishment.phones,

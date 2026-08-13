@@ -1,3 +1,5 @@
+import path from 'path';
+
 export interface AppConfig {
   nodeEnv: string;
   port: number;
@@ -25,6 +27,17 @@ export interface AppConfig {
     apiUrl?: string;
     apiToken?: string;
     webhookSecret?: string;
+  };
+  media: {
+    /** Root directory the local-disk FileStoragePort adapter reads/writes under. Swapping in
+     * an S3/R2 adapter later makes this irrelevant without touching any consumer. */
+    storageRoot: string;
+    /** Absolute origin the browser uses to load stored files. Defaults to this API's own
+     * origin because the local adapter serves them from GET /media/*. Point at a CDN/bucket
+     * URL when an S3/R2 adapter is dropped in. */
+    publicBaseUrl: string;
+    maxUploadBytes: number;
+    maxGalleryPhotos: number;
   };
 }
 
@@ -59,5 +72,12 @@ export default (): AppConfig => ({
     apiUrl: process.env.PAYMENT_GATEWAY_API_URL,
     apiToken: process.env.PAYMENT_GATEWAY_API_TOKEN,
     webhookSecret: process.env.PAYMENT_GATEWAY_WEBHOOK_SECRET,
+  },
+  media: {
+    storageRoot: process.env.MEDIA_STORAGE_ROOT ?? path.join(process.cwd(), 'uploads'),
+    publicBaseUrl:
+      process.env.MEDIA_PUBLIC_BASE_URL ?? `http://localhost:${process.env.PORT ?? '3000'}`,
+    maxUploadBytes: parseInt(process.env.MEDIA_MAX_UPLOAD_BYTES ?? '5242880', 10),
+    maxGalleryPhotos: parseInt(process.env.MEDIA_MAX_GALLERY_PHOTOS ?? '12', 10),
   },
 });

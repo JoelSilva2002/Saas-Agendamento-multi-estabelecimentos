@@ -7,6 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Response } from 'express';
+import { MulterError } from 'multer';
 import {
   ConflictError,
   ForbiddenError,
@@ -63,6 +64,15 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     if (exception instanceof ForbiddenError) {
       return { status: HttpStatus.FORBIDDEN, message: exception.message };
+    }
+
+    // MulterError isn't an HttpException — without this branch a too-large upload would
+    // otherwise fall through to a 500, turning a user error into a server error.
+    if (exception instanceof MulterError) {
+      if (exception.code === 'LIMIT_FILE_SIZE') {
+        return { status: HttpStatus.PAYLOAD_TOO_LARGE, message: exception.message };
+      }
+      return { status: HttpStatus.BAD_REQUEST, message: exception.message };
     }
 
     return { status: HttpStatus.INTERNAL_SERVER_ERROR, message: 'Internal server error' };
