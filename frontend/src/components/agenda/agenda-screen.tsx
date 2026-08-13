@@ -8,7 +8,7 @@ import type {
   EventClickInfo,
   EventInput,
 } from "@fullcalendar/react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -45,6 +45,38 @@ type EventExtendedProps =
   | { kind: "appointment"; appointment: AgendaAppointment }
   | { kind: "block"; block: AgendaBlock };
 
+/**
+ * Fallback range covering the selected day/week/month, used so data fetching doesn't depend on
+ * AgendaCalendar's onDatesSet firing — the mobile list renders instead of the calendar and never
+ * triggers it. When the calendar IS visible, its own onDatesSet overrides this with FullCalendar's
+ * precise rendered-grid boundaries.
+ */
+function computeRangeForSelection(
+  dateKey: string,
+  viewMode: AgendaViewMode,
+): { fromDate: string; toDate: string } {
+  const day = new Date(`${dateKey}T00:00:00`);
+
+  if (viewMode === "month") {
+    const start = new Date(day.getFullYear(), day.getMonth(), 1);
+    const end = new Date(day.getFullYear(), day.getMonth() + 1, 1);
+    return { fromDate: start.toISOString(), toDate: end.toISOString() };
+  }
+
+  if (viewMode === "day") {
+    const start = new Date(day);
+    const end = new Date(day);
+    end.setDate(end.getDate() + 1);
+    return { fromDate: start.toISOString(), toDate: end.toISOString() };
+  }
+
+  const start = new Date(day);
+  start.setDate(start.getDate() - start.getDay());
+  const end = new Date(start);
+  end.setDate(end.getDate() + 7);
+  return { fromDate: start.toISOString(), toDate: end.toISOString() };
+}
+
 export function AgendaScreen() {
   const [session] = useState(() => getSessionContext());
   const [api] = useState(() =>
@@ -56,8 +88,14 @@ export function AgendaScreen() {
   const [viewMode, setViewMode] = useState<AgendaViewMode>("week");
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
   const [selectedDate, setSelectedDate] = useState(() => toDateKey(new Date()));
-  const [range, setRange] = useState<{ fromDate: string; toDate: string } | null>(null);
+  const [range, setRange] = useState<{ fromDate: string; toDate: string } | null>(() =>
+    computeRangeForSelection(selectedDate, viewMode),
+  );
   const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    setRange(computeRangeForSelection(selectedDate, viewMode));
+  }, [selectedDate, viewMode]);
 
   const [detailsAppointment, setDetailsAppointment] = useState<AgendaAppointment | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
