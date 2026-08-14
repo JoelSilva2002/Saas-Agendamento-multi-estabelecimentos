@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
 import { PrismaModule } from './shared-kernel/infrastructure/prisma.module';
+import { HealthModule } from './shared-kernel/infrastructure/health/health.module';
 import { FileStorageModule } from './shared-kernel/infrastructure/storage/file-storage.module';
 import configuration from './config/configuration';
 import { envValidationSchema } from './config/env.validation';
@@ -37,6 +38,7 @@ import { IntegrationsModule } from './modules/integrations/integrations.module';
     EventEmitterModule.forRoot(),
     ScheduleModule.forRoot(),
     PrismaModule,
+    HealthModule,
     FileStorageModule,
     AuthModule,
     TenantsModule,

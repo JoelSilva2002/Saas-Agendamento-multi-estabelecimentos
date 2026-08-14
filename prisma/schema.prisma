@@ -5,6 +5,10 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  // Only read by the Prisma CLI (migrate/db seed), never by the running app. Lets DATABASE_URL
+  // point at a transaction pooler (e.g. Supabase Supavisor on 6543, ?pgbouncer=true) while
+  // migrations run over a connection that supports DDL/session state (session pooler, or direct).
+  directUrl = env("DIRECT_URL")
 }
 
 enum TenantStatus {

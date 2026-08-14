@@ -15,7 +15,9 @@ async function bootstrap() {
   const configService = app.get(ConfigService<AppConfig, true>);
   const port = configService.get('port', { infer: true });
 
-  await app.listen(port);
+  // Explicit host: some container platforms only route traffic to a service that's confirmed
+  // listening on all interfaces, and the default binding behavior is easy to get wrong silently.
+  await app.listen(port, '0.0.0.0');
 }
 
 bootstrap();

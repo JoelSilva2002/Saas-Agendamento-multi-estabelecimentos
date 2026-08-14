@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
@@ -19,6 +19,19 @@ import { resolveSessionContext } from "@/lib/auth/resolve-session";
 import { setSessionContext } from "@/lib/auth/session-context";
 import { setTokens } from "@/lib/auth/token-storage";
 import { loginSchema, type LoginFormValues } from "@/lib/schemas/login-schema";
+
+// Deploy de portfólio (Fase 27): mostra as contas fictícias criadas por `prisma/seed-demo.ts`
+// direto na tela de login, para quem abrir o link não precisar caçar credencial em README.
+// Atrás de uma env porque este bloco não faz sentido (e não deve aparecer) num ambiente com
+// clientes reais — ver NEXT_PUBLIC_DEMO_MODE em .env.example.
+const IS_DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+// Precisam bater com os valores literais em prisma/seed-demo.ts — duplicados de propósito
+// (o frontend não tem acesso ao script de seed do backend em build time).
+const DEMO_ACCOUNTS = [
+  { label: "Barbearia Vintage", email: "barbearia.dono@demo.agendasaas.local" },
+  { label: "Espaço Bella Salão", email: "salao.dona@demo.agendasaas.local" },
+];
+const DEMO_PASSWORD = "Demo1234!";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -68,6 +81,23 @@ export default function LoginPage() {
         <CardDescription>Entre no painel da sua equipe.</CardDescription>
       </CardHeader>
       <CardContent>
+        {IS_DEMO_MODE && (
+          <Alert className="mb-4">
+            <AlertTitle>Ambiente de demonstração</AlertTitle>
+            <AlertDescription>
+              <p>Dados fictícios — fique à vontade para explorar. Senha de todas as contas: {" "}
+                <strong className="text-foreground">{DEMO_PASSWORD}</strong>
+              </p>
+              <ul className="mt-1 list-inside list-disc">
+                {DEMO_ACCOUNTS.map((account) => (
+                  <li key={account.email}>
+                    {account.label}: <strong className="text-foreground">{account.email}</strong>
+                  </li>
+                ))}
+              </ul>
+            </AlertDescription>
+          </Alert>
+        )}
         <form onSubmit={form.handleSubmit(handleSubmit)} className="flex flex-col gap-4">
           <Field data-invalid={!!form.formState.errors.email}>
             <FieldLabel htmlFor="email">E-mail</FieldLabel>

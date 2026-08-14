@@ -7,6 +7,12 @@ export const envValidationSchema = Joi.object({
   DATABASE_URL: Joi.string()
     .uri({ scheme: ['postgresql', 'postgres'] })
     .required(),
+  // Only read by the Prisma CLI (schema.prisma's directUrl) — the running app never touches it.
+  // Optional because locally it's identical to DATABASE_URL (see .env.example); required in
+  // practice whenever DATABASE_URL points at a connection pooler that can't run DDL.
+  DIRECT_URL: Joi.string()
+    .uri({ scheme: ['postgresql', 'postgres'] })
+    .optional(),
 
   JWT_ACCESS_SECRET: Joi.string().min(16).required(),
   JWT_ACCESS_EXPIRES_IN: Joi.string().default('15m'),
